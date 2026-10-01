@@ -1,1 +1,29 @@
+# macOS system files
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE configurations
+.vscode/
+.idea/
+
+# Distribution & Packaging
+build/
+dist/
+*.egg-info/
