@@ -1,6 +1,7 @@
 """
 Concrete processor for ENAHO Modulo 01 (Vivienda y Hogar).
-Implements dwelling inheritance, tenure consolidation, categorical mapping, and data quality validation.
+Strictly separates categorical features (booleans, 1-2-3 survey codes) from real numeric variables.
+Implements dwelling inheritance, skip-pattern resolution, explicit domain labeling, and validation.
 """
 from typing import Optional, Union, Dict, Any
 from pathlib import Path
@@ -11,12 +12,15 @@ from src.core.base_processor import BaseModuleProcessor
 from src.core.validators import (
     SchemaValidator,
     RowValidator,
-    QualityValidator
+    QualityValidator,
+    DataQualityError
 )
 from src.config.modulo01 import (
     COLUMNS_RENAME_MOD01,
     CATEGORICAL_MAPPINGS_MOD01,
     DWELLING_INHERITANCE_COLUMNS,
+    NUMERIC_COLUMNS_MOD01,
+    SKIP_PATTERN_DEFAULTS,
     STRICT_NON_NULL_COLUMNS_MOD01,
     MIN_EXPECTED_ROWS_LIMA_CALLAO,
     MAX_EXPECTED_ROWS_LIMA_CALLAO
@@ -46,7 +50,7 @@ class Modulo01Processor(BaseModuleProcessor):
         for col in DWELLING_INHERITANCE_COLUMNS:
             if col in cleaned.columns:
                 cleaned[col] = cleaned[col].astype(str).str.strip().replace({'': np.nan, 'nan': np.nan, 'None': np.nan})
-                # Forward fill within the same dwelling (CONGLOME, VIVIENDA)
+                # Forward fill within the same physical dwelling (CONGLOME, VIVIENDA)
                 cleaned[col] = cleaned.groupby(['CONGLOME', 'VIVIENDA'])[col].ffill().bfill()
 
         # Clean numeric counts
@@ -60,59 +64,86 @@ class Modulo01Processor(BaseModuleProcessor):
     def feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Transforms skip patterns and generates high-signal features:
-        1. Consolidates P105A, P106A, and P106B into 'seguridad_tenencia' (0% nulls).
-        2. Formats binary connectivity flags (cable, internet).
+        Consolidates P105A, P106A, and P106B into 'seguridad_tenencia'.
         """
         engineered = df.copy()
 
-        # Consolidate tenure and SUNARP registry
-        def map_tenure_security(row) -> str:
-            p105 = str(row.get('P105A', '')).strip()
-            p106a = str(row.get('P106A', '')).strip()
-            p106b = str(row.get('P106B', '')).strip()
+        def to_int_or_none(val):
+            try:
+                if pd.isna(val) or str(val).strip() in ['', 'nan', 'None']:
+                    return None
+                return int(float(val))
+            except (ValueError, TypeError):
+                return None
 
-            if p105 == '1':
+        def map_tenure_security(row) -> str:
+            p105 = to_int_or_none(row.get('P105A'))
+            p106a = to_int_or_none(row.get('P106A'))
+            p106b = to_int_or_none(row.get('P106B'))
+
+            if p105 == 1:
                 return 'alquilada'
-            elif p105 in ['5', '6', '7']:
+            elif p105 in [5, 6, 7]:
                 return 'cedida_posesion_informal'
-            elif p106a == '1' and p106b == '1':
+            elif p106a == 1 and p106b == 1:
                 return 'propia_registrada_sunarp'
-            elif p106a == '1':
+            elif p106a == 1:
                 return 'propia_titulada_no_sunarp'
-            else:
+            elif p106a in [2, 3] or p105 in [2, 3, 4]:
                 return 'propia_sin_titulo'
+            else:
+                return 'otro'
 
         engineered['seguridad_tenencia'] = engineered.apply(map_tenure_security, axis=1)
-
-        # Standardize binary flags
-        for flag_col in ['P1143', 'P1144']:
-            if flag_col in engineered.columns:
-                val = engineered[flag_col].astype(str).str.strip()
-                engineered[flag_col] = (val == '1').astype(int)
 
         return engineered
 
     def apply_mappings(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Standardizes column names and maps categorical codes into readable labels."""
+        """
+        Standardizes column names, maps categorical codes/booleans into text labels,
+        and enforces correct pandas types (category vs numeric).
+        """
         mapped = df[list(COLUMNS_RENAME_MOD01.keys()) + ['seguridad_tenencia']].copy()
         mapped.rename(columns=COLUMNS_RENAME_MOD01, inplace=True)
+
+        # Map survey interview result
+        if 'resultado_encuesta' in mapped.columns:
+            mapped['resultado_encuesta'] = pd.to_numeric(mapped['resultado_encuesta'], errors='coerce').map({
+                1: 'completa',
+                2: 'incompleta'
+            }).fillna('incompleta')
 
         # Apply category mappings (supporting both int and str values)
         for col, mapping in CATEGORICAL_MAPPINGS_MOD01.items():
             if col in mapped.columns:
-                # Convert to numeric where possible to match integer dict keys
-                numeric_series = pd.to_numeric(mapped[col], errors='coerce')
-                # Map using integer keys, fall back to string keys if any
-                mapped_series = numeric_series.map(mapping)
-                # Keep original if unmapped or assign 'otro'
-                mapped[col] = mapped_series.fillna(mapped[col].astype(str).str.strip()).replace({'': 'otro', 'nan': 'otro'})
+                str_series = mapped[col].astype(str).str.strip()
+                num_series = pd.to_numeric(str_series, errors='coerce')
+                
+                # Map using integer dict
+                mapped_series = num_series.map(mapping)
+
+                # Default fallback for skip patterns if any
+                default_val = SKIP_PATTERN_DEFAULTS.get(col, 'otro')
+                mapped[col] = mapped_series.fillna(default_val)
+                mapped[col] = mapped[col].replace({'': default_val, 'nan': default_val})
+
+        # Ensure skip patterns on non-mapped categorical columns if any
+        for col, default_val in SKIP_PATTERN_DEFAULTS.items():
+            if col in mapped.columns and col not in CATEGORICAL_MAPPINGS_MOD01:
+                mapped[col] = mapped[col].astype(str).str.strip().replace({'': default_val, 'nan': default_val})
 
         # Set primary key index
         mapped.set_index(PRIMARY_KEY_HOUSEHOLD, inplace=True)
 
-        # Convert object columns to categorical
-        str_cols = mapped.select_dtypes(include=['object']).columns
-        mapped[str_cols] = mapped[str_cols].astype('category')
+        # Explicitly ensure numerical columns are real numbers
+        for num_col in NUMERIC_COLUMNS_MOD01:
+            if num_col in mapped.columns:
+                mapped[num_col] = pd.to_numeric(mapped[num_col], errors='coerce')
+
+        # Explicitly convert ALL other features to pandas category dtype
+        cat_cols = [c for c in mapped.columns if c not in NUMERIC_COLUMNS_MOD01]
+        for c in cat_cols:
+            mapped[c] = mapped[c].astype('category')
 
         return mapped
 
@@ -135,3 +166,12 @@ class Modulo01Processor(BaseModuleProcessor):
         # 4. Numeric boundary checks
         QualityValidator.validate_numeric_bounds(df, 'total_habitaciones', min_val=1, max_val=30)
         QualityValidator.validate_numeric_bounds(df, 'total_dormitorios', min_val=1, max_val=20)
+
+        # 5. Type validation: ensure numeric columns are ONLY total_habitaciones and total_dormitorios
+        actual_num_cols = df.select_dtypes(include=np.number).columns.tolist()
+        expected_num_cols = NUMERIC_COLUMNS_MOD01
+        if set(actual_num_cols) != set(expected_num_cols):
+            raise DataQualityError(
+                f"Data types misconfigured! Expected numeric columns {expected_num_cols}, "
+                f"but found {actual_num_cols}."
+            )

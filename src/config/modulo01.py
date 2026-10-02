@@ -1,5 +1,6 @@
 """
 Configuration and metadata schema for ENAHO Modulo 01 (Vivienda y Hogar).
+Defines exact categorical mappings, boolean translations, and validation constraints.
 """
 from typing import Dict, Any, List
 
@@ -37,7 +38,13 @@ DWELLING_INHERITANCE_COLUMNS: List[str] = [
     'P101', 'P102', 'P103', 'P104', 'P104A', 'P110', 'P111A'
 ]
 
-# Value mapping dictionaries (standardized labels)
+# Real quantitative continuous/count columns in Modulo 01
+NUMERIC_COLUMNS_MOD01: List[str] = [
+    'total_habitaciones',
+    'total_dormitorios'
+]
+
+# Categorical mapping dictionaries (all code values, 1-2-3 answers and booleans to string labels)
 CATEGORICAL_MAPPINGS_MOD01: Dict[str, Dict[Any, str]] = {
     'tipo_vivienda': {
         1: 'casa_independiente',
@@ -87,7 +94,8 @@ CATEGORICAL_MAPPINGS_MOD01: Dict[str, Dict[Any, str]] = {
         5: 'pozo_ciego_negro',
         6: 'rio_canal_acequia',
         7: 'otro',
-        8: 'sin_bano_campo_abierto'
+        8: 'sin_bano_campo_abierto',
+        9: 'sin_bano_campo_abierto'
     },
     'combustible_cocina': {
         1: 'electricidad',
@@ -100,9 +108,37 @@ CATEGORICAL_MAPPINGS_MOD01: Dict[str, Dict[Any, str]] = {
         8: 'no_cocina',
         9: 'otro'
     },
+    'tenencia_vivienda': {
+        1: 'alquilada',
+        2: 'propia_pagada',
+        3: 'propia_invasion',
+        4: 'propia_plazos',
+        5: 'cedida_trabajo',
+        6: 'cedida_otro',
+        7: 'otro'
+    },
+    'titulo_propiedad': {
+        1: 'si',
+        2: 'no',
+        3: 'en_tramite'
+    },
+    'registro_sunarp': {
+        1: 'si',
+        2: 'no'
+    },
     'agua_todos_los_dias': {
-        1: 'todos_los_dias',
-        2: 'por_dias_o_horas'
+        1: 'si',
+        2: 'no'
+    },
+    'tiene_tv_cable': {
+        1: 'si',
+        0: 'no',
+        2: 'no'
+    },
+    'tiene_internet': {
+        1: 'si',
+        0: 'no',
+        2: 'no'
     },
     'vivienda_inadecuada': {
         0: 'adecuada',
@@ -126,6 +162,15 @@ CATEGORICAL_MAPPINGS_MOD01: Dict[str, Dict[Any, str]] = {
     }
 }
 
+# Default values for skip patterns when survey question was conditionally omitted
+SKIP_PATTERN_DEFAULTS: Dict[str, str] = {
+    'titulo_propiedad': 'no_aplica',          # When dwelling is rented or ceded
+    'registro_sunarp': 'no_aplica',           # When dwelling has no title or is rented
+    'agua_todos_los_dias': 'no_aplica_sin_red',# When dwelling has no piped water
+    'tiene_tv_cable': 'no',                   # Default absent
+    'tiene_internet': 'no'                    # Default absent
+}
+
 # Validation constraints
 MIN_EXPECTED_ROWS_LIMA_CALLAO: int = 4000
 MAX_EXPECTED_ROWS_LIMA_CALLAO: int = 7500
@@ -136,7 +181,14 @@ STRICT_NON_NULL_COLUMNS_MOD01: List[str] = [
     'material_piso',
     'total_habitaciones',
     'total_dormitorios',
+    'tenencia_vivienda',
+    'titulo_propiedad',
+    'registro_sunarp',
     'seguridad_tenencia',
     'fuente_agua',
-    'conexion_bano'
+    'agua_todos_los_dias',
+    'conexion_bano',
+    'combustible_cocina',
+    'tiene_tv_cable',
+    'tiene_internet'
 ]
