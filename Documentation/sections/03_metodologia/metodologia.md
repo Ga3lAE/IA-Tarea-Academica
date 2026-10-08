@@ -8,19 +8,14 @@ Durante la exploración inicial se planteó una interrogante crítica:
 Para responder rigurosamente, se evaluaron los **5,571 hogares de Lima Metropolitana y el Callao** (ENAHO 2024), contrastando las condiciones habitacionales contra la etiqueta oficial de pobreza monetaria de Sumaria (**18.61% pobres vs 81.39% no pobres**). La evidencia empírica desmintió de forma contundente cualquier regla trivial:
 
 ### Evidencia Empírica de los Datos:
-1. **El 59.40% de los hogares pobres en Lima viven en casas con paredes de LADRILLO Y BLOQUE DE CEMENTO:**
-   De los 1,037 hogares pobres identificados, 616 habitan viviendas consolidadas de albañilería noble.
-2. **El 65.03% de los hogares con paredes de MADERA NO SON POBRES:**
+1. **El 59.40% de los hogares pobres en Lima viven en casas con paredes de LADRILLO Y BLOQUE DE CEMENTO:**  
+   De los 1,037 hogares pobres identificados, 616 habitan viviendas consolidadas de albañilería noble producto de décadas de autoconstrucción progresiva.
+2. **El 65.03% de los hogares con paredes de MADERA NO SON POBRES:**  
    De 509 hogares con pared de madera, 331 tienen ingresos y consumo per cápita superiores a la línea de pobreza.
-3. **El 70.18% de los hogares con paredes de ADOBE NO SON POBRES:**
+3. **El 70.18% de los hogares con paredes de ADOBE NO SON POBRES:**  
    De 560 hogares con adobe, 393 pertenecen al estrato no pobre.
-4. **El 79.46% de los hogares pobres tienen PISO DE CEMENTO O LOSETA:**
+4. **El 79.46% de los hogares pobres tienen PISO DE CEMENTO O LOSETA:**  
    Solo una minoría de los pobres urbanos habita sobre pisos de tierra pura.
-
-### Explicación del Fenómeno: Pobreza Multidimensional e Interacciones No Lineales
-En el entorno urbano, una vivienda de ladrillo construida hace décadas en distritos populares (San Juan de Lurigancho, Comas, Villa El Salvador) puede albergar hoy a un núcleo familiar de 6 personas sostenido por un único trabajador informal sin contrato ni pensión. A pesar de la solidez física de las paredes, el gasto per cápita cae a S/. 280 mensuales, situando al hogar en pobreza monetaria.
-
-Por el contrario, una pareja joven sin hijos que recién adquiere un lote con paredes de madera pero cuyos dos integrantes trabajan como técnicos formales gana S/. 3,200 mensuales combinados (gasto per cápita S/. 1,600), siendo holgadamente no pobres.
 
 **Conclusión Metodológica:** Ningún clasificador basado exclusivamente en el Módulo de Vivienda (01) puede resolver el problema. Se requiere obligatoriamente capturar las **interacciones no lineales entre Vivienda (Módulo 01), Demografía y Dependencia (Módulo 02), Capital Humano (Módulo 03) e Informalidad Laboral (Módulo 05)**.
 
@@ -28,62 +23,123 @@ Por el contrario, una pareja joven sin hijos que recién adquiere un lote con pa
 
 ## 2. Formalización Matemática del Problema (Framework de Aprendizaje Supervisado)
 
-Siguiendo la formalización canónica de Tom Mitchell (1997) establecida en el curso:
+Siguiendo la formalización canónica de Tom Mitchell (1997) establecida en el curso de Inteligencia Artificial (1INF24):
 
 * **Tarea ($T$):** Clasificación binaria que asigna a cada hogar $i$ una etiqueta $\hat{y}_i \in \{0, 1\}$, donde:
   $$y_i = \begin{cases} 1 & \text{si el hogar está en Pobreza Total (Extrema o No Extrema)} \\ 0 & \text{si el hogar es No Pobre} \end{cases}$$
-* **Experiencia ($E$):** Muestra de microdatos multi-anual etiquetada $\mathcal{D}_{\text{train}} = \{(\mathbf{x}_i, y_i)\}_{i=1}^N$, donde cada vector $\mathbf{x}_i \in \mathcal{X} \subset \mathbb{R}^d$ sintetiza atributos habitacionales, demográficos y laborales.
+* **Experiencia ($E$):** Muestra de microdatos multi-anual etiquetada $\mathcal{D}_{\text{train}} = \{(\mathbf{x}_i, y_i)\}_{i=1}^N$, donde cada vector $\mathbf{x}_i \in \mathcal{X} \subset \mathbb{R}^d$ sintetiza atributos habitacionales, demográficos y laborales provenientes de la ENAHO 2024 ($N = 5,571$), evaluada posteriormente de forma ciega en la ENAHO 2025 ($\mathcal{D}_{\text{test}}$).
 * **Medida de Desempeño ($P$):**
   * $F_1$-score de la clase minoritaria (media armónica entre Precision y Recall).
   * Área bajo la curva Precision-Recall (PR-AUC).
-  * Sensibilidad / Recall de la clase pobre ($1 - \text{Tasa de Error de Exclusión}$).
-  * Brier Score (para calibración de probabilidades).
+  * Sensibilidad / Recall de la clase pobre ($1 - \text{Tasa de Error de Exclusión}$), con meta operativa $\ge 0.70$.
+  * Brier Score (para evaluar calibración probabilística).
 
 ### Función de Pérdida Sensible al Costo (*Cost-Sensitive Loss*)
-Dado que el error de exclusión social (dejar sin subsidio a un hogar pobre, Falso Negativo) tiene un costo social mucho mayor que el error de inclusión (dar subsidio a un no pobre, Falso Positivo), se parametriza la función de pérdida asimétrica:
-$$\mathcal{L}(\theta) = -\frac{1}{N} \sum_{i=1}^N \left[ c_1 y_i \log(\hat{p}_i) + c_0 (1 - y_i) \log(1 - \hat{p}_i) \right]$$
-donde $c_1 > c_0$ (típicamente $c_1 / c_0 \approx \frac{1 - \pi}{\pi} \approx \frac{0.814}{0.186} \approx 4.37$) balancea la penalización del gradiente.
+Dado que el error de exclusión social (dejar sin subsidio a un hogar pobre, Falso Negativo) tiene un costo social severo frente al error de inclusión (Falso Positivo), se parametriza una función de pérdida logística asimétrica:
+$$\mathcal{L}_{\text{CS}}(\theta) = -\frac{1}{N} \sum_{i=1}^N \left[ c_1 y_i \log(\hat{p}_i) + c_0 (1 - y_i) \log(1 - \hat{p}_i) \right] + \lambda \Omega(\theta)$$
+donde la razón de costos refleja el desbalance empírico de clases en Lima:
+$$\frac{c_1}{c_0} = \frac{4,534}{1,037} \approx 4.372$$
+garantizando que el gradiente penalice fuertemente la omisión de familias en pobreza.
 
 ---
 
 ## 3. Comportamiento Entrada / Salida
 
-* **Espacio de Entrada ($\mathcal{X}$):** Vector multidimensional derivado del cruce de 4 módulos a nivel de hogar:
-  1. *Vivienda (Módulo 01):* Calidad de piso, pared, techo, tipo de vivienda, abastecimiento de agua, saneamiento, combustible de cocina, tenencia jurídica (título, SUNARP), total de dormitorios, indicador de hacinamiento, internet, cable.
+* **Espacio de Entrada ($\mathcal{X}$):** Vector multidimensional $\mathbf{x}_i = [\mathbf{x}_i^{(\text{viv})}, \mathbf{x}_i^{(\text{dem})}, \mathbf{x}_i^{(\text{educ})}, \mathbf{x}_i^{(\text{emp})}]^T \in \mathbb{R}^d$ a nivel de hogar `(CONGLOME, VIVIENDA, HOGAR)`:
+  1. *Vivienda (Módulo 01):* Calidad de piso, pared, techo, tipo de vivienda, abastecimiento de agua, saneamiento, combustible de cocina, tenencia jurídica (título), total de dormitorios, índice de hacinamiento, internet, telefonía.
   2. *Demografía (Módulo 02):* Tamaño del hogar, número de niños menores de 5 años, adultos mayores, tasa de dependencia demográfica, sexo y edad del jefe de hogar.
   3. *Educación (Módulo 03):* Años de educación formal del jefe de hogar, máximo nivel educativo en la familia, asistencia escolar de menores.
   4. *Empleo e Informalidad (Módulo 05):* Condición de actividad del jefe (ocupado/desocupado/inactivo), condición de informalidad (empleo sin RUC ni derechos), afiliación a pensión (AFP/ONP), horas semanales trabajadas, tasa de ocupación familiar.
-* **Espacio de Salida ($\mathcal{Y}$):** Probabilidad posterior estimada $\hat{p}_i = P(y_i = 1 \mid \mathbf{x}_i) \in [0, 1]$ y clasificación binaria discreta $\hat{y}_i = \mathbb{I}(\hat{p}_i \ge \tau)$, donde el umbral $\tau$ se optimiza mediante búsqueda lineal sobre el conjunto de validación.
+
+* **Política de Cero Fuga de Datos (*Zero Data Leakage*):** Se excluyen matemáticamente del espacio $\mathcal{X}$ los ingresos (`INGHOG2D`), gastos (`GASHOG2D`) y líneas de pobreza de Sumaria, los cuales únicamente operan para definir el *target* $y_i$.
+
+* **Espacio de Salida ($\mathcal{Y}$):** Probabilidad posterior estimada $\hat{p}_i = P(y_i = 1 \mid \mathbf{x}_i) \in [0, 1]$ y clasificación binaria discreta $\hat{y}_i = \mathbb{I}(\hat{p}_i \ge \tau^*)$, donde el umbral $\tau^*$ se calibra operativamente para maximizar el $F_1$-score sujeto a $\text{Recall} \ge 0.70$.
 
 ---
 
-## 4. Operadores y Adaptaciones Algorítmicas Desarrolladas
+## 4. Desafíos Prácticos de los Microdatos (Hallazgos del EDA Inicial) y Estrategias de Mitigación
 
-### 1. Imputación Intra-Vivienda por Cohabitación Multifamiliar
+El Análisis Exploratorio de Datos (EDA) inicial sobre los microdatos de la ENAHO 2024 reveló 5 fricciones empíricas críticas que justifican el diseño de operadores ad-hoc:
+
+| Desafío Empírico en ENAHO | Hallazgo Cuantitativo del EDA Inicial | Riesgo Metodológico | Estrategia de Mitigación en el Pipeline |
+| :--- | :--- | :--- | :--- |
+| **1. Desbalance de Clases Severo** | Solo 18.61% de hogares en pobreza vs 81.39% no pobres (ratio 1:4.37). | Paradoja de Exactitud: predecir siempre clase 0 da 81.4% *accuracy* pero 100% de exclusión social. | Función *Cost-Sensitive Loss* ($c_1/c_0 = 4.372$), calibración de umbral $\tau^* \approx 0.30$ y optimización de $F_1$/PR-AUC. |
+| **2. Nulos Estructurales en Vivienda** | 2.15% de hogares (120 familias secundarias `HOGAR 22, 33...`) con 100% nulos en Módulo 01. | Pérdida de hogares vulnerables si se aplica `dropna()` o distorsión si se imputa media global. | Operador `HousingCohortImputer`: propagación relacional (`ffill/bfill`) por clave `(CONGLOME, VIVIENDA)`. |
+| **3. Dispersión y Colas Largas (*Sparsity*)** | Categorías como mármol, caña o carbón con frecuencias menores al 0.8% en pisos y paredes. | *One-Hot Encoding* crearía matrices hiperdispersas ($>40$ variables irrelevantes) y sobreajuste. | Operador `DomainBinner`: agrupación semántica en 3 niveles ordenados guiados por tasas empíricas de pobreza. |
+| **4. Discrepancia de Granularidad ($1:M$)** | Módulo 01 a nivel de hogar, pero Módulos 02, 03 y 05 con 19,420 personas ($1$ a $12$ por familia). | Imposibilidad de unión tabular directa y pérdida de dinámicas de dependencia intrafamiliar. | Operador `HouseholdAggregator` $\Phi(\cdot)$: bifurcación entre decisor principal ($P203=1$) y métricas del núcleo colectivo. |
+| **5. Riesgo de Fuga de Información** | Gastos e ingresos de Sumaria correlacionados en $>0.85$ con el *target*. | Rendimiento artificialmente perfecto dentro de muestra que colapsa en campo real. | Cortafuegos *Zero-Leakage*: eliminación total de gastos e ingresos monetarios del espacio $\mathcal{X}$. |
+
+---
+
+## 5. Operadores y Adaptaciones Algorítmicas Desarrolladas
+
+
+### 1. Imputación Intra-Vivienda por Cohabitación Multifamiliar (`HousingCohortImputer`)
 En la ENAHO, el 2.15% de los hogares en Lima corresponden a hogares secundarios (`HOGAR 22, 33...`) que alquilan cuartos o comparten la vivienda física con el hogar principal (`HOGAR 11`). Para estos hogares secundarios, el encuestador del INEI deja vacías las preguntas de materiales físicos de la vivienda.
-* **Operador:** Se diseñó un operador de propagación agrupada por clave física `(CONGLOME, VIVIENDA)` mediante forward-fill y backward-fill (`ffill().bfill()`), resolviendo el 100% de los nulos estructurales sin imputar valores sintéticos ajenos a la vivienda real.
+* **Operador:** Propagación agrupada por clave física `(CONGLOME, VIVIENDA)` mediante forward-fill y backward-fill (`ffill().bfill()`), resolviendo el 100% de los nulos estructurales sin imputar valores sintéticos artificiales.
 
-### 2. Agregación Multinivel ($\text{Individuo} \to \text{Hogar}$)
-Los módulos 02, 03 y 05 vienen a nivel de persona (`CODPERSO`). Para llevarlos a nivel de hogar `(CONGLOME, VIVIENDA, HOGAR)`, se implementó un operador dual $\Phi(\cdot)$:
+### 2. Agregación Multinivel ($\text{Individuo} \to \text{Hogar}$) (`HouseholdAggregator`)
+Los módulos 02, 03 y 05 vienen a nivel de persona (`CODPERSO`). Para llevarlos a nivel de hogar, se implementó un operador dual $\Phi(\cdot)$:
 * **Rama Jefe de Hogar ($P203 = 1$):** Extrae directamente los atributos del decisor principal del hogar (sexo, edad, nivel educativo, informalidad laboral, pensión).
 * **Rama Núcleo del Hogar:** Aplica funciones de agregación estadística:
-  $$\text{tamano\_hogar} = \sum \mathbb{I}(\text{persona}), \quad \text{tasa\_dependencia} = \frac{\sum \mathbb{I}(\text{edad} < 15 \lor \text{edad} \ge 65)}{\sum \mathbb{I}(15 \le \text{edad} \le 64)}$$
-  $$\text{max\_educ\_hogar} = \max_{j} (\text{nivel\_educ}_j), \quad \text{tasa\_ocupacion} = \frac{\sum \mathbb{I}(\text{ocupado}_j)}{\sum \mathbb{I}(\text{edad}_j \ge 14)}$$
+  $$\text{tamano\_hogar} = \sum \mathbb{I}(\text{persona}), \quad \text{tasa\_dependencia} = \frac{\sum \mathbb{I}(\text{edad} < 15 \lor \text{edad} \ge 65)}{\max(1, \sum \mathbb{I}(15 \le \text{edad} \le 64))}$$
+  $$\text{max\_educ\_hogar} = \max_{j} (\text{nivel\_educ}_j), \quad \text{tasa\_ocupacion} = \frac{\sum \mathbb{I}(\text{ocupado}_j)}{\max(1, \sum \mathbb{I}(\text{edad}_j \ge 14))}$$
 
 ### 3. Agrupación Semántica Guiada por Dominio (*Domain-based Binning*)
-Para evitar la maldición de la dimensionalidad y el sobreajuste que produciría un One-Hot Encoding sobre 9 categorías con colas inferiores al 1%, se reagruparon las categorías por afinidad socioeconómica:
-* `piso_calidad`: `noble_acabado` (loseta, parquet, vinílico: 7.1% pobreza) vs `cemento_basico` (24.3% pobreza) vs `precario_tierra` (tierra, tablas: 37.0% pobreza).
-* `combustible_tipo`: `gas_glp` (58.6% hogares) vs `gas_natural_electricidad` (33.1%) vs `biomasa_precaria` (leña, bosta, carbón: 36.5% pobreza).
-* `agua_acceso`: `red_publica` (87.4%) vs `fuente_vulnerable` (camión cisterna, pilón, pozo: 26.8% pobreza).
+Para evitar la dispersión de *One-Hot Encoding* sobre categorías con colas inferiores al 1%, se reagruparon las categorías por afinidad socioeconómica:
+* `piso_calidad`: `noble_acabado` (7.1% pobreza) vs `cemento_basico` (24.3% pobreza) vs `precario_tierra` (37.0% pobreza).
+* `combustible_tipo`: `gas_glp` vs `gas_natural_electricidad` vs `biomasa_precaria` (36.5% pobreza).
+* `agua_acceso`: `red_publica` (87.4%) vs `fuente_vulnerable` (26.8% pobreza).
 
-### 4. Política Estricta de Fuga de Datos (*Zero Data Leakage*)
-Se eliminaron por diseño del espacio $\mathcal{X}$ las variables de gastos monetarios (`GASHOG2D`, `GASTOMON`), ingresos (`INGHOG2D`) y las líneas de pobreza (`LINEA`, `LINPE`) del Módulo 34. Dichas columnas solo intervienen para generar la etiqueta de supervisión $y_i$ y se aíslan completamente del vector de entrada.
+### 4. Adaptación de la Jerarquía de Modelos del Curso
+1. **Regresión Logística ElasticNet:** Baseline lineal paramétrico con ponderación de clases $c_1/c_0 = 4.372$ y balance $L_1/L_2$.
+2. **Árbol de Decisión CART:** Modelo no lineal ortogonal con divisiones ponderadas por costo y poda por complejidad ($\alpha = 0.002$).
+3. **Random Forest Classifier:** Ensamble por bagging con subsampling estratificado y reducción de varianza.
+4. **LightGBM Classifier:** Ensamble por boosting secuencial con `scale_pos_weight = 4.372`, optimización por hojas (*leaf-wise*) y regularización de hessianos.
 
 ---
 
-## 5. Modelos de Clasificación a Comparar (Taxonomía del Curso 1INF24)
+## 6. Diagrama de Arquitectura del Pipeline
 
-1. **Baseline Paramétrico:** **Regresión Logística con Regularización ElasticNet** (función sigmoide, combinación L1/L2 para selección de variables dispersas).
-2. **Modelo No Paramétrico Ortogonal:** **Árbol de Decisión CART** (criterio de división por Ganancia de Información / Entropía e Índice de Impureza de Gini, con poda por costo-complejidad $\alpha$).
-3. **Ensamble por Bagging:** **Random Forest Classifier** (agregación de árboles paralelos con selección aleatoria de atributos y estimación out-of-bag).
-4. **Ensamble por Boosting Secuencial:** **LightGBM / XGBoost Classifier** (optimización por descenso de gradiente sobre árboles de decisión con leaf-wise split y regularización L1/L2 en hojas).
+```mermaid
+flowchart TD
+    subgraph S1["1. Ingesta Multimodular ENAHO"]
+        M1["Módulo 01: Vivienda\n(Nivel Hogar)"]
+        M2["Módulo 02: Demografía\n(Nivel Persona)"]
+        M3["Módulo 03: Educación\n(Nivel Persona)"]
+        M5["Módulo 05: Empleo\n(Nivel Persona)"]
+        M34["Módulo 34: Sumaria\n(Etiqueta y_i)"]
+    end
+
+    subgraph S2["2. Operadores de Preprocesamiento e Ingeniería"]
+        O1["Imputación Intra-Vivienda\nffill/bfill por (CONGLOME, VIVIENDA)"]
+        O2["Agregación Multinivel Φ(·)\nRama Jefe (P203=1) + Ratios Hogar"]
+        O3["Domain-Guided Semantic Binning\n(Pisos, Combustible, Agua)"]
+        O4["Aislamiento Cero Fuga\n(Eliminación de Gastos e Ingresos)"]
+    end
+
+    subgraph S3["3. Espacio Vectorial y Modelado"]
+        X["Matriz de Entrada Libre de Fuga\nX ∈ ℝ^{N × d}"]
+        ML["Modelos Supervisados:\n• Regresión Logística ElasticNet\n• CART Podado\n• Random Forest\n• LightGBM Cost-Sensitive"]
+    end
+
+    subgraph S4["4. Inferencia y Validación Fuera de Tiempo"]
+        P["Probabilidad Posterior p̂_i ∈ [0, 1]"]
+        T["Calibración de Umbral τ*\n(Recall ≥ 0.70)"]
+        E["Evaluación Out-of-Time:\nTrain 2024 → Blind Test 2025"]
+    end
+
+    M1 --> O1
+    O1 --> O3
+    M2 --> O2
+    M3 --> O2
+    M5 --> O2
+    O3 --> O4
+    O2 --> O4
+    M34 -->|Aislamiento estricto| O4
+    O4 --> X
+    X --> ML
+    ML --> P
+    P --> T
+    T --> E
+```
