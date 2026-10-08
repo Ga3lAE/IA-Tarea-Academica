@@ -78,6 +78,20 @@ Documentation/
     │
     ├── 02_trabajos_relacionados/             # Sección 2: Estado del arte y literatura científica
     ├── 03_metodologia/                       # Sección 3: Pipeline técnico, operadores y algoritmos
+    │   ├── 01_formulacion_problema/          # Sub-punto 1: Tarea T-E-P, espacios X/Y, Cost-Sensitive Loss
+    │   │   ├── metodologia.md                # Teoría pura de Mitchell y funciones de costo asimétricas
+    │   │   └── metodologia_aplicada.md       # Aplicación en ENAHO (5,571 hogares, ratio 1:4.372)
+    │   ├── 02_comportamiento_entrada_salida/ # Sub-punto 2: Contratos vectoriales y Cero Fuga
+    │   │   ├── metodologia.md                # Teoría de espacios de entrada/salida y preservación causal
+    │   │   └── metodologia_aplicada.md       # Vectores modulares (viv, dem, educ, emp) y diagnóstico EDA
+    │   ├── 03_operadores_algoritmos_adaptaciones/ # Sub-punto 3: Operadores específicos y jerarquía
+    │   │   ├── metodologia.md                # Teoría de propagación cluster, reducción 1:M y sesgo inductivo
+    │   │   └── metodologia_aplicada.md       # Clases Python (HousingCohort, Aggregator, DomainBinner)
+    │   ├── 04_figuras_diagramas/             # Sub-punto 4: Representación visual del pipeline y EDA
+    │   │   ├── metodologia.md                # Teoría de autosuficiencia visual y semiótica en ML (IEEE)
+    │   │   └── metodologia_aplicada.md       # Catálogo de figuras (Pipeline, Domain Binning, Cost-Curve)
+    │   ├── metodologia.md                    # Síntesis centralizada en Markdown de la Sección 3
+    │   └── metodologia.tex                   # Markup LaTeX importado en main.tex
     ├── 04_experimentacion_resultados/        # Sección 4: Métricas, curvas PR-AUC y análisis SHAP
     ├── 05_conclusion/                        # Sección 5: Conclusiones del estudio
     ├── 06_sugerencias_futuras/               # Sección 6: Extensiones y trabajos futuros
