@@ -92,7 +92,7 @@ Tarea Académica/
 │   └── pipeline.py               # Orquestador multi-año y multi-módulo
 ├── notebooks/                    # Flujo de trabajo interactivo por etapas
 │   ├── 01_modulos/               # Extracción y limpieza modular (01_vivienda_modulo01.ipynb)
-│   ├── 02_integracion/           # Unión relacional a nivel hogar y cruce municipal
+│   ├── 02_integracion/           # Fusión relacional jerárquica a nivel hogar (01 + 02 + 03 + 05 + 34)
 │   ├── 03_eda/                   # Análisis exploratorio multivariado de pobreza
 │   ├── 04_modelado/              # Modelos de clasificación supervisada out-of-time
 │   └── README.md                 # Guía del flujo de notebooks
@@ -101,16 +101,13 @@ Tarea Académica/
 │   └── sections/                 # Capítulos modulares (.md y .tex sincronizados)
 └── Data/
     ├── 2024/
-    │   ├── enaho/                # Microdatos ENAHO 2024 (966-Modulo01 a 966-Modulo34)
-    │   └── municipal/            # Gasto presupuestal municipal MEF 2024
+    │   └── enaho/                # Microdatos ENAHO 2024 (966-Modulo01 a 966-Modulo34)
     ├── 2025/
-    │   ├── enaho/                # Microdatos ENAHO 2025 (1031-Modulo01 a 1031-Modulo34)
-    │   └── municipal/            # Gasto presupuestal municipal MEF 2025
+    │   └── enaho/                # Microdatos ENAHO 2025 (1031-Modulo01 a 1031-Modulo34)
     ├── 2026/
-    │   ├── enaho/                # Microdatos preliminares ENAHO 2026 (alerta temprana)
-    │   └── municipal/            # Gasto presupuestal municipal MEF 2026
+    │   └── enaho/                # Microdatos preliminares ENAHO 2026 (alerta temprana)
     ├── processed/                # Datasets limpios estandarizados (*_cleaned.csv)
-    └── Fuentes.md                # Enlaces oficiales INEI y MEF Datos Abiertos
+    └── Fuentes.md                # Enlaces oficiales y diccionario metodológico INEI
 ```
 
 ---
