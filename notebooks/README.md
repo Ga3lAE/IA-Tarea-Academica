@@ -5,7 +5,7 @@ Esta carpeta estructura los experimentos interactivos y el análisis de datos po
 ```
 notebooks/
 ├── 01_modulos/       # Limpieza y extracción individual por módulo ENAHO
-├── 02_integracion/   # Unión relacional a nivel hogar y cruce con datos municipales
+├── 02_integracion/   # Fusión relacional jerárquica a nivel hogar (Módulos 01 + 02 + 03 + 05 + 34)
 ├── 03_eda/           # Análisis exploratorio multivariado de pobreza (Lima y Callao)
 ├── 04_modelado/      # Clasificación binaria out-of-time, optimización de costos y SHAP
 └── README.md
@@ -21,10 +21,10 @@ notebooks/
   - `01_vivienda_modulo01.ipynb`: Procesamiento del Módulo 01 (Vivienda y Hogar), resolución de nulos estructurales intra-vivienda, imputación y validación de tipos.
   - *(Próximos)* `02_demografia_modulo02.ipynb`, `03_educacion_modulo03.ipynb`, `04_empleo_modulo05.ipynb`, `05_sumaria_modulo34.ipynb` (Variable Objetivo $Y$).
 
-### 2. `02_integracion/` (Fusión Relacional y Enriquecimiento Territorial)
-- **Objetivo:** Integrar horizontalmente los módulos procesados utilizando la clave primaria de hogar:
+### 2. `02_integracion/` (Fusión Relacional Jerárquica: Hogar - Miembro)
+- **Objetivo:** Integrar horizontalmente los módulos de hogar (01, 34) con agregaciones multidimensionales a nivel de miembro (02 Demografía, 03 Educación, 05 Empleo) utilizando la clave primaria de hogar:
   $$\text{PK} = \{\text{CONGLOME}, \text{VIVIENDA}, \text{HOGAR}\}$$
-- **Enriquecimiento Externo:** Cruce con la base de datos abiertos del MEF (gasto presupuestal municipal por habitante) usando el `UBIGEO` distrital (6 dígitos) para incorporar el contexto territorial institucional.
+- **Ingeniería de Características Agregadas:** Carga de dependencia demográfica, ratio de ocupación laboral, presencia de enfermedades crónicas/discapacidad familiar, y perfil sociolaboral del jefe de hogar.
 
 ### 3. `03_eda/` (Análisis Exploratorio y Binarización de Categorías)
 - **Objetivo:** Demostrar estadísticamente por qué un único árbol o regla simple falla (mitos de materiales precarios vs. pobreza real) y justificar el uso de modelos no lineales.
