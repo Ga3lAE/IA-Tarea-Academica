@@ -72,7 +72,7 @@
     {\fontsize{14}{17}\selectfont\textbf{“CLASIFICACIÓN DE POBREZA EN LIMA Y CALLAO MEDIANTE APRENDIZAJE SUPERVISADO SOBRE MICRODATOS ENAHO”}}
     \par\vspace{0.7em}
     \raggedright
-    {\fontsize{9}{11}\selectfont\textbf{Autor/Autores: } Gael Arias, Melanie Mallqui, Franco Salcedo, Valeshka Lavado
+    {\fontsize{9}{11}\selectfont\textbf{Autor/Autores: } Gael Arias, Integrante 2, Integrante 3}
     \par\vspace{0.7em}
   \end{center}
 
@@ -89,174 +89,15 @@
 }]
 
 % =========================================================================
-% I. INTRODUCCIÓN (IDEAS PRELIMINARES)
+% MÓDULOS DE SECCIONES (IMPORTADOS DESDE Documentation/sections/)
 % =========================================================================
-\section{Introducción}
-
-\textbf{\textit{Descripción del problema: Contexto, relevancia y justificativa}}
-\begin{itemize}
-    \item \textbf{Contexto:} En Lima Metropolitana y el Callao, la pobreza monetaria afecta a cerca del 18\% de los hogares tras los recientes shocks económicos (ENAHO 2024--2025).
-    \item \textbf{Problema:} Los sistemas tradicionales de focalización proxy (Proxy Means Testing) utilizan modelos de regresión lineal paramétrica que sufren de subreporte de ingresos informales y generan un alto \textit{error de exclusión} (falsos negativos).
-    \item \textbf{Justificación (IA / Machine Learning):} El problema se formula como una tarea de \textbf{Aprendizaje Supervisado de Clasificación Binaria}. A través de un pipeline supervisado, se busca inducir una función de mapeo $f: X \to Y$ a partir de la experiencia empírica $E$ (microdatos de encuestas) para predecir la condición de pobreza ($Y \in \{0, 1\}$) basándose en atributos observables y verificables del hogar.
-\end{itemize}
-
-\textbf{\textit{Hipótesis y/o pregunta a abordar}}
-\begin{itemize}
-    \item \textbf{Pregunta:} ¿En qué medida los algoritmos de clasificación supervisada (Regresión Logística, Árboles de Decisión y Ensambles) mejoran la detección de hogares en pobreza frente a aproximaciones lineales estándar, considerando el desbalance de clases?
-    \item \textbf{Hipótesis:} Un modelo de clasificación no paramétrico (árboles / ensambles) entrenado con preprocesamiento guiado por dominio y ajuste por desbalance incrementará el $F_1$-score de la clase minoritaria en al menos 15 puntos porcentuales respecto a una regresión logística simple, reduciendo los falsos negativos por debajo del 20\%.
-\end{itemize}
-
-\textbf{\textit{Objetivos}}
-\begin{itemize}
-    \item \textbf{General:} Diseñar, implementar y evaluar un sistema de clasificación binaria supervisada para identificar hogares en condición de pobreza en Lima y Callao usando microdatos ENAHO.
-    \item \textbf{Específicos:}
-    \begin{enumerate}
-        \item Implementar el pipeline de ingestión y preprocesamiento de datos (resolviendo datos faltantes estructurales por cohabitación en el Módulo 01).
-        \item Diseñar la ingeniería de características: agregación multinivel (individuo $\to$ hogar) para módulos de demografía y empleo, y reducción de cardinalidad en categorías de vivienda.
-        \item Entrenar y comparar algoritmos de clasificación supervisada (Regresión Logística, Árboles de Decisión, Random Forest/Gradient Boosting).
-        \item Evaluar el rendimiento del clasificador mediante métricas para clases desbalanceadas ($F_1$-score, Recall, PR-AUC) y partición temporal (2024 $\to$ 2025), garantizando control estricto de fuga de datos (\textit{data leakage}).
-    \end{enumerate}
-\end{itemize}
-
-% =========================================================================
-% II. TRABAJOS RELACIONADOS (IDEAS PRELIMINARES)
-% =========================================================================
-\section{Trabajos relacionados}
-
-\textbf{\textit{Sintetice al menos 3 publicaciones científicas relevantes al problema abordado.}}
-\begin{enumerate}
-    \item \textbf{Proxy Means Testing mediante ML:} McBride \& Nichols (2018, \textit{World Bank Economic Review}) demostraron que algoritmos de Machine Learning supervisado superan a los estimadores OLS tradicionales en focalización de pobreza, reduciendo significativamente el error de exclusión en muestras fuera de tiempo.
-    \item \textbf{Inferencia de Pobreza con Atributos Observables:} Jean et al. (2016, \textit{Science}) y Blumenstock et al. (2015, \textit{Science}) fundamentan el uso de variables proxy no monetarias para predecir niveles socioeconómicos sin depender de mediciones de consumo de alta volatilidad.
-    \item \textbf{Modelado Tabular y Desbalance de Clases:} Ke et al. (2017, \textit{NeurIPS}) y Fernández et al. (2018, \textit{JAIR}) abordan la optimización de algoritmos supervisados de clasificación sobre datos tabulares heterogéneos y la calibración de umbrales ante distribuciones de clases desbalanceadas.
-\end{enumerate}
-
-% =========================================================================
-% III. METODOLOGÍA (IDEAS PRELIMINARES)
-% =========================================================================
-\section{Metodología}
-
-\subsection{Enfoque(s) propuesto:}
-
-\textbf{\textit{Describir formalmente el problema usando una notación adecuada.}}
-\begin{itemize}
-    \item Formalización del Aprendizaje Supervisado (según Tom Mitchell):
-    \begin{itemize}
-        \item \textbf{Tarea ($T$):} Clasificación binaria de un hogar en $Y \in \{0, 1\}$ (1: Pobreza total, 0: No Pobre).
-        \item \textbf{Experiencia ($E$):} Conjunto de entrenamiento etiquetado $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^N$, donde $\mathbf{x}_i \in \mathcal{X} \subset \mathbb{R}^d$ representa el vector de atributos de vivienda, demografía y empleo.
-        \item \textbf{Medida de Desempeño ($P$):} $F_1$-score de la clase minoritaria, Recall (sensibilidad) y área bajo la curva Precision-Recall (PR-AUC).
-    \end{itemize}
-\end{itemize}
-
-\textbf{\textit{Describir el comportamiento entrada/salida del (los) enfoques.}}
-\begin{itemize}
-    \item \textbf{Entrada:} Vector de características $\mathbf{x}_i$ que sintetiza: características físicas de la vivienda (materiales, hacinamiento, saneamiento), variables demográficas del hogar (tamaño, tasa de dependencia) y condiciones laborales del jefe de hogar (informalidad, ocupación).
-    \item \textbf{Salida:} Estimación de probabilidad posterior $\hat{p}_i = P(y_i=1 \mid \mathbf{x}_i) \in [0, 1]$ y asignación binaria $\hat{y}_i = \mathbb{I}(\hat{p}_i \ge \tau)$, donde $\tau$ es el umbral de decisión calibrado.
-\end{itemize}
-
-\textbf{\textit{Describir los operadores/funciones/algoritmos desarrollados para solucionar el problema planteado. No describir métodos genéricos, sino detalles de cómo se aplicó/adaptó al problema.}}
-\begin{itemize}
-    \item \textbf{Pipeline Supervisado ENAHO:}
-    \begin{enumerate}
-        \item \textit{Limpieza e Imputación Estructural:} Propagación intra-vivienda (\texttt{ffill}/\texttt{bfill}) para resolver el 2.15\% de nulos en hogares secundarios que cohabitan una misma vivienda.
-        \item \textit{Agregación Multinivel ($\text{Individuo} \to \text{Hogar}$):} Operador dual $\Phi(\cdot)$ que extrae atributos específicos del jefe de hogar ($P203=1$) y calcula agregaciones estadísticas del núcleo (máximo educativo, tasa de ocupación).
-        \item \textit{Agrupación Semántica Guiada por Dominio:} Fusión de categorías de baja frecuencia en niveles de calidad habitacional ordenados (e.g. pisos acabados nobles vs cemento básico vs pisos precarios de tierra).
-        \item \textit{Algoritmos de Clasificación a Comparar:} Regresión Logística (modelo lineal sigmoidal de referencia), Árboles de Decisión (particiones ortogonales por Gini/Entropía) y Ensambles (Random Forest / LightGBM).
-        \item \textit{Control de Fuga de Datos (\textit{Zero Leakage}):} Aislamiento absoluto de gastos y líneas de pobreza durante la fase de entrenamiento.
-    \end{enumerate}
-\end{itemize}
-
-\textbf{\textit{Utilizar figuras para auxiliar la explicación.}}
-\begin{center}
-    \fbox{\parbox{0.9\linewidth}{\centering\fontsize{8}{10}\selectfont\color{primarygreen}\textbf{[Diagrama del Pipeline de Aprendizaje Supervisado: Ingesta $\to$ Preprocesamiento $\to$ Ingeniería de Features $\to$ Modelado Supervisado $\to$ Validación]}}}
-\end{center}
-
-% =========================================================================
-% IV. EXPERIMENTACIÓN Y RESULTADOS (PLANTILLA EXACTA DOCX)
-% =========================================================================
-\section{Experimentación y Resultados}
-
-\subsection{Setup experimental:}
-\textbf{\textit{Describir datos usados (o método para obtenerlos) (si aplica).}}
-
-\textbf{\textit{Describir las métricas de evaluación.}}
-
-\textbf{\textit{Describir los experimentos hechos (qué componentes/parámetros/escenarios se probaron, qué valores, qué estrategia de validación).}}
-
-{\color{lightmint}\fontsize{9}{11}\selectfont
-Los experimentos deben ser planificados para poder caracterizar/comparar los enfoques desarrollados. Aquí algunas preguntas que deben responder los experimentos:
-
-\textbf{\textit{¿El enfoque desarrollado resuelve siempre el problema?}}
-
-\textbf{\textit{¿Qué tan eficientemente lo resuelven?}}
-
-\textbf{\textit{¿Cuál es el desempeño comparado con otros modelos o técnicas de referencia?}}
-
-\textbf{\textit{¿Cómo influyen los parámetros del enfoque en su desempeño?}}
-}
-
-\subsection{Resultados y Discusión:}
-\textbf{\textit{Presentar resultados numéricos generados en los experimentos. Hacer un análisis de dichos resultados.}}
-
-{\color{lightmint}\fontsize{9}{11}\selectfont
-La presentación de los resultados debe facilitar el entendimiento. En general se deben usar figuras y/o tablas. Recuerde, todos los resultados deben interpretarse. Esforzarse para explicar el formato de las curvas presentadas, dar detalles del tiempo de simulación.
-}
-
-% =========================================================================
-% V. CONCLUSIÓN (PLANTILLA EXACTA DOCX)
-% =========================================================================
-\section{Conclusión}
-\textbf{\textit{Dar las conclusiones principales con base en los resultados obtenidos y a lo que fue planteado en su hipótesis, ¿qué se puede decir del o los enfoques desarrollados y/o del problema abordado?}}
-
-% =========================================================================
-% VI. SUGERENCIAS DE TRABAJOS FUTUROS (PLANTILLA EXACTA DOCX)
-% =========================================================================
-\section{Sugerencias de trabajos futuros}
-\textbf{\textit{Indicar, por ejemplo: ¿qué cosas se pueden mejorar del enfoque?, ¿qué otros posibles problemas podrían abordarse con el enfoque?}}
-
-% =========================================================================
-% VII. IMPLICANCIAS ÉTICAS (PLANTILLA EXACTA DOCX)
-% =========================================================================
-\section{Implicancias éticas}
-\textbf{\textit{Indicar qué implicancias éticas podría generar el trabajo desarrollado de ser escalado (sesgos, posible afectación a la seguridad/privacidad de usuarios, posibilidad de ataques y robo de datos, etc). Sugiera formas de abordar dichos problemas}}
-
-% =========================================================================
-% VIII. LINK DEL REPOSITORIO DEL TRABAJO (PLANTILLA EXACTA DOCX)
-% =========================================================================
-\section{Link del repositorio del trabajo}
-\textbf{\textit{Puede ser Github, Gitlab, u otro. Dar las credenciales para poder tener acceso.}}
-
-% =========================================================================
-% IX. DECLARACIÓN DE CONTRIBUCIÓN (PLANTILLA EXACTA DOCX)
-% =========================================================================
-\section{Declaración de contribución de cada integrante}
-\textbf{\textit{Describir los aportes de cada integrante al proyecto.}}
-
-% =========================================================================
-% X. DECLARACIÓN DE USO DE IA (PLANTILLA EXACTA DOCX)
-% =========================================================================
-\section{Declaración de uso de IA}
-\textbf{\textit{Indicar si se emplearon herramientas de inteligencia artificial durante el desarrollo del trabajo. En caso afirmativo, especificar la herramienta utilizada, el propósito de su uso y la forma en que sus aportes fueron revisados, validados e integrados por el grupo. Precisar que la responsabilidad del contenido final recae en los autores.}}
-
-% =========================================================================
-% XI. REFERENCIAS (PLANTILLA EXACTA DOCX)
-% =========================================================================
-\section{Referencias}
-{\color{lightmint}\fontsize{9}{11}\selectfont
-Ejemplo:
-
-\textbf{\textit{Victor O.K. Li, “Hints on writing technical papers and making presentations”, IEEE Transactions on Education, vol. 42, no. 2, pp. 134-137, mayo de 1999.}}
-
-\textbf{\textit{Robert M. Woelfle, editor, “New Guide for Better Technical Presentations: Applying Proven Techniques with Modern Tools”, IEEE Professional Communication Society, 1992. Dirección electrónica: www.ieee.org}}
-}
-
-\subsection*{Nota importante:}
-{\color{lightmint}\fontsize{9}{11}\selectfont
-\begin{center}
-\textbf{Figuras y tablas}
-\end{center}
-\textbf{\textit{Cada figura debe ser leída y comprendida sin necesidad de recurrir a la descripción a lo largo del texto.}}
-
-\textbf{\textit{Todos los símbolos usados deben ser explicados en la leyenda.}}
-}
+\input{../sections/01_introduccion/introduccion.tex}
+\input{../sections/02_trabajos_relacionados/trabajos_relacionados.tex}
+\input{../sections/03_metodologia/metodologia.tex}
+\input{../sections/04_experimentacion_resultados/experimentacion_resultados.tex}
+\input{../sections/05_conclusion/conclusion.tex}
+\input{../sections/06_sugerencias_futuras/sugerencias_futuras.tex}
+\input{../sections/07_implicancias_eticas/implicancias_eticas.tex}
+\input{../sections/08_declaraciones_referencias/declaraciones_referencias.tex}
 
 \end{document}

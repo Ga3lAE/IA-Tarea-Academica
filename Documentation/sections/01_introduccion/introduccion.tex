@@ -1,0 +1,27 @@
+\section{Introducción}
+
+\textbf{\textit{Descripción del problema: Contexto, relevancia y justificativa}}
+\begin{itemize}
+    \item \textbf{Contexto:} En Lima Metropolitana y el Callao, la pobreza monetaria urbana afecta a cerca del 18.6\% de los hogares (ENAHO 2024--2025). La volatilidad de ingresos en economías urbanas altamente informales dificulta la medición oportuna de la vulnerabilidad.
+    \item \textbf{Problema de la Focalización Clásica:} Los sistemas tradicionales de Proxy Means Testing (PMT) basados en regresiones lineales por MCO (como el SISFOH) asumen aditividad rígida y sufren por el subreporte de ingresos informales, generando un alto \textit{error de exclusión social} (falsos negativos).
+    \item \textbf{Justificación de la IA:} Se formula el problema como \textbf{Aprendizaje Supervisado de Clasificación Binaria} sobre atributos observables y verificables de la vivienda, demografía y empleo informal, induciendo $f: \mathcal{X} \to \mathcal{Y}$ a partir de microdatos de encuestas multi-anuales.
+    \item \textbf{Decisión Arquitectónica:} Se prioriza la clasificación binaria directa sobre la regresión continua de gasto para evitar que la varianza desproporcionada de hogares de altos ingresos distorsione la frontera crítica de pobreza bajo funciones de costo cuadráticas ($MSE$).
+\end{itemize}
+
+\textbf{\textit{Hipótesis y/o pregunta a abordar}}
+\begin{itemize}
+    \item \textbf{Pregunta:} ¿En qué medida un pipeline de aprendizaje automático supervisado basado en clasificadores no lineales (Gradient Boosted Decision Trees), adaptado con reducción dimensional semántica y optimización sensible al costo, supera a los modelos lineales de PMT en la identificación de hogares pobres en Lima y Callao?
+    \item \textbf{Hipótesis:} Un modelo de ensamble no paramétrico (LightGBM/XGBoost) entrenado sobre un espacio de características multidimensional consolidado (Vivienda, Demografía, Educación y Empleo informal), con preprocesamiento guiado por dominio y ajuste por desbalance de clases, incrementará el $F_1$-score de la clase minoritaria en al menos 15 puntos porcentuales respecto a la Regresión Logística, reduciendo el error de exclusión por debajo del 20\% en evaluación fuera de tiempo (2024 $\to$ 2025).
+\end{itemize}
+
+\textbf{\textit{Objetivos}}
+\begin{itemize}
+    \item \textbf{General:} Diseñar, implementar y evaluar un sistema de clasificación binaria supervisado basado en ensambles de árboles para clasificar la condición de pobreza en hogares de Lima y Callao usando microdatos ENAHO.
+    \item \textbf{Específicos:}
+    \begin{enumerate}
+        \item Construir un pipeline modular de ingestión y limpieza bajo principios SOLID para resolver datos faltantes estructurales por cohabitación en los módulos 01, 02, 03, 05 y 34.
+        \item Diseñar la ingeniería de características mediante agregación multinivel ($\text{individuo} \to \text{hogar}$) y agrupación semántica por dominio (*Domain-based Binning*) para mitigar la dispersión en colas largas.
+        \item Entrenar y comparar clasificadores supervisados (Regresión Logística baseline, Árboles CART, Random Forest y LightGBM) incorporando pérdidas sensibles al costo.
+        \item Evaluar el rendimiento mediante métricas para clases desbalanceadas ($F_1$-score, Recall, PR-AUC) y partición temporal (2024 $\to$ 2025), garantizando control estricto de fuga de datos (*data leakage*) y explicabilidad con TreeSHAP.
+    \end{enumerate}
+\end{itemize}

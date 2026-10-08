@@ -1,0 +1,34 @@
+\section{Metodología}
+
+\subsection{Enfoque(s) propuesto:}
+
+\textbf{\textit{Describir formalmente el problema usando una notación adecuada.}}
+\begin{itemize}
+    \item Siguiendo el paradigma de Aprendizaje Supervisado (Mitchell, 1997):
+    \begin{itemize}
+        \item \textbf{Tarea ($T$):} Clasificación binaria que asigna a cada hogar $i$ una etiqueta $y_i \in \{0, 1\}$ (1: Pobreza total, 0: No Pobre).
+        \item \textbf{Experiencia ($E$):} Conjunto de entrenamiento etiquetado $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^N$, donde $\mathbf{x}_i \in \mathcal{X} \subset \mathbb{R}^d$ sintetiza atributos de vivienda, demografía y empleo informal.
+        \item \textbf{Medida de Desempeño ($P$):} $F_1$-score minoritario, Recall de la clase pobre y área bajo la curva Precision-Recall (PR-AUC).
+    \end{itemize}
+    \item \textbf{Pérdida Sensible al Costo:} Se optimiza una pérdida asimétrica $\mathcal{L}(\theta) = -\sum_{i=1}^N [c_1 y_i \log(\hat{p}_i) + c_0 (1-y_i) \log(1-\hat{p}_i)]$ con $c_1 > c_0$ para penalizar fuertemente el error de exclusión (Falso Negativo).
+\end{itemize}
+
+\textbf{\textit{Describir el comportamiento entrada/salida del (los) enfoques.}}
+\begin{itemize}
+    \item \textbf{Entrada:} Vector de características $\mathbf{x}_i$ que sintetiza: características físicas de la vivienda (materiales, hacinamiento, saneamiento), variables demográficas agregadas del hogar (tamaño, tasa de dependencia) y condiciones laborales del jefe de hogar (informalidad, afiliación a pensión).
+    \item \textbf{Salida:} Estimación de probabilidad posterior $\hat{p}_i = P(y_i=1 \mid \mathbf{x}_i) \in [0, 1]$ y asignación binaria $\hat{y}_i = \mathbb{I}(\hat{p}_i \ge \tau)$, donde el umbral $\tau$ se optimiza para maximizar el $F_1$-score.
+\end{itemize}
+
+\textbf{\textit{Describir los operadores/funciones/algoritmos desarrollados para solucionar el problema planteado. No describir métodos genéricos, sino detalles de cómo se aplicó/adaptó al problema.}}
+\begin{itemize}
+    \item \textbf{1. Imputación por Cohabitación Intra-Vivienda:} Propagación intra-vivienda (\texttt{ffill}/\texttt{bfill} por \texttt{CONGLOME} y \texttt{VIVIENDA}) para resolver el 2.15\% de nulos estructurales en hogares secundarios que comparten la misma unidad física.
+    \item \textbf{2. Agregación Multinivel ($\text{Individuo} \to \text{Hogar}$):} Operador dual $\Phi(\cdot)$ que extrae variables directas del jefe de hogar ($P203=1$) y calcula agregaciones estadísticas del núcleo familiar (tasa de dependencia demográfica, porcentaje de ocupados, máximo nivel educativo).
+    \item \textbf{3. Agrupación Semántica Guiada por Dominio:} Consolidación de categorías con colas largas ($<1\%$) en grupos de calidad habitacional ordenados (e.g., piso noble acabado vs cemento básico vs tierra), evitando dispersión sin perder señal discriminante.
+    \item \textbf{4. Algoritmos a Comparar:} Regresión Logística (baseline sigmoidal penalizado), Árboles de Decisión CART (particiones ortogonales por Gini/Entropía), Random Forest y LightGBM (ensamble por boosting).
+    \item \textbf{5. Control de Fuga de Datos (\textit{Zero Leakage}):} Aislamiento absoluto de gastos de consumo y líneas de pobreza de Sumaria en la matriz de entrenamiento $\mathbf{x}_i$.
+\end{itemize}
+
+\textbf{\textit{Utilizar figuras para auxiliar la explicación.}}
+\begin{center}
+    \fbox{\parbox{0.9\linewidth}{\centering\fontsize{8}{10}\selectfont\color{primarygreen}\textbf{[Diagrama del Pipeline Supervisado: Ingesta $\to$ Agregación Multinivel $\to$ Domain Binning $\to$ GBDT Cost-Sensitive $\to$ Validación Out-of-Time]}}}
+\end{center}
