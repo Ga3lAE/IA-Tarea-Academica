@@ -1,51 +1,47 @@
 # Sección 2: Trabajos Relacionados
 
-## 1. Síntesis Crítica de Publicaciones Científicas Relevantes
+## 1. Síntesis Crítica del Núcleo de Publicaciones Científicas
 
-Para sustentar el diseño del pipeline y las adaptaciones algorítmicas, se analizaron cuatro publicaciones científicas de alto impacto internacional indexadas en Scopus y Web of Science:
+Para sustentar el diseño del pipeline y las adaptaciones algorítmicas, se seleccionó un núcleo estratégico de cuatro publicaciones primarias de alto impacto internacional indexadas en *Nature*, *NeurIPS*, *The World Bank Economic Review* y *ACM*, cubriendo los pilares de focalización social, arquitectura tabular, fallo de modelos lineales y validación temporal:
 
-### Publicación 1: Proxy Means Testing mediante Machine Learning en Países en Desarrollo
-* **Referencia:** McBride, L., & Nichols, A. (2018). *Retooling poverty targeting using out-of-sample machine learning and proxy means tests*. **The World Bank Economic Review**, 32(3), 531-550.
-* **Problema Abordado:** Evaluación de la efectividad de fórmulas tradicionales de Proxy Means Testing (PMT) construidas con Mínimos Cuadrados Ordinarios (MCO) frente a algoritmos de Machine Learning (Lasso, Ridge, Random Forest y Gradient Boosting) para la asignación de transferencias monetarias en Bolivia, Timor-Leste y Malawi.
-* **Aportes y Hallazgos Principales:**
-  * Los autores demuestran que las regresiones MCO convencionales sufren de sobreajuste dentro de muestra (*in-sample*) y se degradan severamente al aplicarse fuera de muestra (*out-of-sample*).
-  * Los algoritmos de ensambles basados en árboles lograron reducir la **tasa de error de exclusión social entre un 10% y un 18%** en comparación con los modelos de PMT paramétricos de los gobiernos.
-  * Concluyen que la no linealidad inherente de los árboles de decisión permite capturar umbrales de privación multidimensional que los modelos aditivos lineales pasan por alto.
-* **Conexión Directa con Nuestro Proyecto:** Constituye la principal justificación empírica para abandonar los modelos lineales tipo SISFOH en Lima y Callao y adoptar Gradient Boosted Decision Trees (GBDT).
+### Publicación 1: Machine Learning y Reducción del Error de Exclusión en Crisis Post-COVID
+* **Referencia:** Aiken, E., Bellue, S., Karlan, D., Udry, C., & Blumenstock, J. (2022). *Machine learning and phone data can improve targeting of humanitarian aid*. **Nature**, 603(7903), 864–870.
+* **Problema Abordado:** Ineficiencia y desactualización de los registros sociales estatales estáticos para focalizar transferencias monetarias de emergencia en poblaciones vulnerables durante la pandemia de COVID-19.
+* **Aportes y Hallazgos:** Demostraron que el aprendizaje supervisado entrenado sobre proxies observables no monetarios reduce la tasa de error de exclusión de los hogares más pobres entre un **4% y un 21%** frente a los métodos de focalización tradicionales empleados por los gobiernos.
+* **Conexión con Nuestro Proyecto:** Valida empíricamente que la Inteligencia Artificial es superior a los padrones burocráticos estáticos para identificar a las familias en extrema necesidad sin requerir mediciones directas de ingresos volátiles.
 
 ---
 
-### Publicación 2: Inferencia de Bienestar y Pobreza Mediante Proxies No Monetarios
-* **Referencias:** 
-  * Jean, N., Burke, M., Sherrie, M., Ermon, S., Lobell, D. B., & Biswas, S. (2016). *Combining satellite imagery and machine learning to predict poverty*. **Science**, 353(6301), 790-794.
-  * Blumenstock, J., Cadamuro, G., & On, R. (2015). *Predicting poverty and wealth from mobile phone metadata and machine learning*. **Science**, 350(6264), 1073-1076.
-* **Problema Abordado:** La dificultad de medir el consumo y la pobreza en países en desarrollo debido al alto costo, infrecuencia y retraso temporal de los censos de población e ingresos.
-* **Aportes y Hallazgos Principales:**
-  * Demostraron que variables observables indirectas (calidad de materiales de los techos y pisos, acceso a redes eléctricas, infraestructura de transporte) correlacionan con coeficientes superiores al 70% con las encuestas de gasto de los hogares del Banco Mundial (LSMS).
-  * La acumulación de activos duraderos en el hogar filtra el ruido estacional de los ingresos transitorios y refleja la verdadera capacidad económica permanente (*Permanent Income Hypothesis*).
-* **Conexión Directa con Nuestro Proyecto:** Valida la estrategia de utilizar los atributos habitacionales del Módulo 01 (pisos, paredes, saneamiento, combustibles) y demográficos del Módulo 02 como estimadores estables de la pobreza sin requerir mediciones directas de ingresos.
+### Publicación 2: Superioridad de Modelos Basados en Árboles sobre Deep Learning en Datos Tabulares
+* **Referencia:** Grinsztajn, L., Oyallon, E., & Varoquaux, G. (2022). *Why do tree-based models still outperform deep learning on tabular data?*. **Advances in Neural Information Processing Systems (NeurIPS 2022)**, Datasets and Benchmarks Track.
+* **Problema Abordado:** La discrepancia teórica y empírica de por qué las arquitecturas de Deep Learning (MLP, ResNet, TabNet) fracasan consistentemente frente a modelos basados en árboles en datos tabulares heterogéneos.
+* **Aportes y Hallazgos:** Mediante un benchmark masivo sobre 45 conjuntos de datos tabulares, probaron que el sesgo inductivo de los árboles de decisión (capacidad para modelar funciones escalonadas no suaves e invarianza ante transformaciones monótonas) se adapta de forma óptima a variables de encuestas mixtas, superando categóricamente a las redes neuronales profundas.
+* **Conexión con Nuestro Proyecto:** Constituye la justificación teórica fundamental para seleccionar ensambles basados en árboles (CART, Random Forest y Gradient Boosting / LightGBM) como la arquitectura central sobre los microdatos de la ENAHO.
 
 ---
 
-### Publicación 3: Algoritmos Tabulares Avanzados y Manejo de Desbalance de Clases
-* **Referencias:** 
-  * Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., ... & Liu, T. Y. (2017). *LightGBM: A highly efficient gradient boosting decision tree*. **Advances in Neural Information Processing Systems (NeurIPS)**, 30.
-  * Fernández, A., García, S., Herrera, F., & Chawla, N. V. (2018). *SMOTE for learning from imbalanced data: progress and challenges*. **Journal of Artificial Intelligence Research**, 61, 863-905.
-* **Problema Abordado:** Optimización computacional de ensambles de árboles de decisión sobre datos tabulares heterogéneos y aprendizaje bajo distribuciones asimétricas de clases.
-* **Aportes y Hallazgos Principales:**
-  * Ke et al. demostraron que la partición leaf-wise de LightGBM combinada con *Gradient-based One-Side Sampling* (GOSS) y *Exclusive Feature Bundling* (EFB) alcanza convergencia acelerada y alta capacidad de discriminación en datasets con mezclas de variables continuas y categóricas.
-  * Fernández et al. revisaron 15 años de investigación en desbalance y evidenciaron que en datos tabulares con interacciones no lineales densas, el sobremuestreo sintético indiscriminado (SMOTE) puede generar instancias artificiales en regiones de solapamiento de clases, recomendando en su lugar el **ajuste de umbral de decisión (*Threshold Moving*)** y el **aprendizaje sensible al costo (*Cost-Sensitive Learning*)**.
-* **Conexión Directa con Nuestro Proyecto:** Guía la elección de LightGBM como modelo principal y el uso de funciones de pérdida asimétricas ponderadas para contrarrestar la proporción 18.6% / 81.4% de pobreza en Lima y Callao sin distorsionar la distribución natural de los datos.
+### Publicación 3: Fallo de las Regresiones Lineales de Proxy Means Testing (PMT)
+* **Referencia:** McBride, L., & Nichols, A. (2018). *Retooling poverty targeting using out-of-sample machine learning and proxy means tests*. **The World Bank Economic Review**, 32(3), 531–550.
+* **Problema Abordado:** Evaluación de la efectividad de las fórmulas tradicionales de Proxy Means Testing (PMT) construidas con Mínimos Cuadrados Ordinarios (MCO) frente a algoritmos de Machine Learning no paramétricos.
+* **Aportes y Hallazgos:** Probaron que las regresiones MCO sufren de sobreajuste dentro de muestra (*in-sample*) y se degradan drásticamente fuera de muestra (*out-of-sample*). Los ensambles basados en árboles lograron reducir la **tasa de error de exclusión social entre un 10% y un 18%** al capturar interacciones no lineales de privación que los modelos aditivos lineales ignoran.
+* **Conexión con Nuestro Proyecto:** Respalda la crítica metodológica al sistema SISFOH en Lima y Callao y justifica el reemplazo de fórmulas lineales por clasificadores de ensamble no lineales.
 
 ---
 
-## 2. Cuadro Comparativo de Enfoques en la Literatura
+### Publicación 4: Degradación Temporal Fuera de Tiempo (*Moving Targets* y *Data Drift*)
+* **Referencia:** World Bank & EAAMO (2023). *Moving targets: When does a poverty prediction model need to be updated?*. In **Proceedings of the 3rd ACM Conference on Equity and Access in Algorithms, Mechanisms, and Optimization (EAAMO 2023)**.
+* **Problema Abordado:** La pérdida de precisión y sesgo algorítmico que sufren los modelos de predicción de pobreza a lo largo del tiempo debido a shocks inflacionarios y desplazamientos en el mercado laboral (*dataset drift*).
+* **Aportes y Hallazgos:** Demostraron que la validación cruzada aleatoria convencional sobrestima el desempeño real al permitir fuga de información temporal (*temporal leakage*). Propusieron protocolos rigurosos de validación fuera de tiempo (*out-of-time*) entrenando en un periodo $t$ y probando en $t+1$.
+* **Conexión con Nuestro Proyecto:** Fundamenta técnicamente nuestro esquema experimental estricto de partición temporal (Entrenamiento en ENAHO 2024 y Prueba Ciega en ENAHO 2025) para garantizar modelos robustos ante la inflación urbana.
 
-| Dimensión | PMT Tradicional (SISFOH / OLS) | Modelos Satelitales (Jean et al.) | Nuestro Enfoque (ENAHO ML Tabular) |
-| :--- | :--- | :--- | :--- |
-| **Algoritmo Base** | Regresión Lineal MCO | Redes Convolucionales (CNN) | Gradient Boosted Trees (LightGBM) |
-| **Tipo de Variables** | Aditivas declaradas | Imágenes satelitales / NTL | Microdatos multimodulares (Vivienda + Empleo + Demografía) |
-| **Nivel de Resolución** | Hogar (estático) | Clúster / Distrito agregado | Hogar individual con agregación multinivel |
-| **Tratamiento del Desbalance** | Ninguno (corte MCO arbitrario) | N/A (regresión espacial continua) | Cost-Sensitive Loss + Calibración de Umbral ($\tau$) |
-| **Evaluación Fuera de Tiempo** | Rara vez evaluado | Validación espacial geográfica | Partición temporal estricta (2024 $\to$ 2025) |
-| **Explicabilidad** | Coeficientes beta $\beta_j$ | Grad-CAM (mapas de calor) | TreeSHAP (valores Shapley auditables) |
+---
+
+## 2. Cuadro Comparativo Multidimensional de Enfoques en la Literatura
+
+| Dimensión | PMT Tradicional (SISFOH / MCO) | Ayuda Humanitaria (Aiken et al., Nature) | Benchmark Tabular (Grinsztajn et al., NeurIPS) | Nuestro Enfoque (ENAHO ML Tabular PUCP) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Algoritmo Base** | Regresión Lineal Aditiva | Gradient Boosting y Redes | Benchmark GBDT vs. Deep Learning (45 datasets) | Jerarquía del curso: Regresión Logística, CART, Random Forest y LightGBM |
+| **Tipo de Variables** | Aditivas declaradas | Metadatos móviles y satelitales | Datos tabulares numéricos y categóricos mixtos | Microdatos ENAHO multimodulares (Vivienda + Demografía + Empleo informal) |
+| **Tratamiento del Desbalance** | Ninguno (corte arbitrario de percentil) | Calibración de umbral por cuota presupuestal | Métricas estándar balanceadas / AUC | Función de pérdida sensible al costo ($c_1 \gg c_0$) y calibración de umbral ($\tau$) |
+| **Esquema de Validación** | Rara vez evaluado fuera de muestra | Validación espacial geográfica | K-fold estratificado estándar | Validación temporal estricta fuera de tiempo (*Train 2024 $\to$ Test 2025*) |
+| **Explicabilidad** | Coeficientes beta $\beta_j$ (lineal) | Coeficientes y pesos agregados | Análisis teórico de sesgo inductivo | TreeSHAP (valores exactos de Shapley por hogar) |
