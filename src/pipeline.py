@@ -34,14 +34,38 @@ class ENAHOPipeline:
     def find_csv(self, year: int, module_code: str) -> Optional[Path]:
         """Discovers the raw CSV file based on year and module code (case-insensitive)."""
         mod_clean = module_code.lower().replace("-", "").replace("_", "")
+        year_str = str(year)
+
+        # 1. Check year-specific directory Data/{year}/enaho/
+        year_enaho_dir = self.data_root / year_str / "enaho"
+        if year_enaho_dir.is_dir():
+            for d in year_enaho_dir.iterdir():
+                if not d.is_dir():
+                    continue
+                d_clean = d.name.lower().replace("-", "").replace("_", "")
+                if mod_clean in d_clean:
+                    for f in d.glob("*.csv"):
+                        if year_str in f.name and not f.name.endswith("_cleaned.csv"):
+                            return f
+
+        # 2. Check direct subdirectories under data_root
         for d in self.data_root.iterdir():
             if not d.is_dir():
                 continue
             d_clean = d.name.lower().replace("-", "").replace("_", "")
             if mod_clean in d_clean:
                 for f in d.glob("*.csv"):
-                    if str(year) in f.name and not f.name.endswith("_cleaned.csv"):
+                    if year_str in f.name and not f.name.endswith("_cleaned.csv"):
                         return f
+
+        # 3. Recursive fallback under data_root
+        for f in self.data_root.rglob("*.csv"):
+            if f.name.endswith("_cleaned.csv"):
+                continue
+            parent_clean = f.parent.name.lower().replace("-", "").replace("_", "")
+            if mod_clean in parent_clean and year_str in f.name:
+                return f
+
         return None
 
     def run_module(
@@ -57,7 +81,7 @@ class ENAHOPipeline:
         Args:
             module_code: Name of module (e.g. 'modulo01').
             years: List of survey years (e.g. [2024, 2025]).
-            export_cleaned: Whether to save _cleaned.csv files.
+            export_cleaned: Whether to save _cleaned.csv files in Data/processed/.
             concatenate_years: Whether to concatenate all years into a single DataFrame.
         """
         mod_key = module_code.lower()
@@ -70,13 +94,17 @@ class ENAHOPipeline:
         processor_cls = self._registry[mod_key]
         results: Dict[int, pd.DataFrame] = {}
 
+        processed_dir = self.data_root / "processed"
+        if export_cleaned:
+            processed_dir.mkdir(parents=True, exist_ok=True)
+
         for yr in years:
             csv_path = self.find_csv(yr, module_code)
             if not csv_path:
                 print(f"[ENAHOPipeline] Warning: CSV for {module_code} ({yr}) not found under {self.data_root}")
                 continue
 
-            output_path = csv_path.parent / csv_path.name.replace(".csv", "_cleaned.csv") if export_cleaned else None
+            output_path = processed_dir / f"{mod_key}_{yr}_cleaned.csv" if export_cleaned else None
             
             processor = processor_cls(
                 file_path=csv_path,

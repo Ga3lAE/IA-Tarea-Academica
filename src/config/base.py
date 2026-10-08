@@ -1,14 +1,14 @@
 """
 Base configuration constants for ENAHO processing.
 """
-from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 # Encoding and file reading defaults
-DEFAULT_ENCODING = "latin-1"
-DEFAULT_SEPARATOR = ";"
+DEFAULT_ENCODING: str = "latin-1"
+DEFAULT_SEPARATOR: Optional[str] = None  # None = auto-detect (; or ,); can be set to ";" or ","
+DEFAULT_OUTPUT_SEPARATOR: str = ","      # Output CSV separator (standard for Spanish Excel / Peru)
 
-# Geographic filter: Lima (15) and Callao (07)
+# Default geographic filter: Lima (15) and Callao (07)
 DEFAULT_UBIGEO_PREFIXES: Tuple[str, ...] = ("07", "15")
 
 # Valid survey interview results (1: Completa, 2: Incompleta con datos suficientes)

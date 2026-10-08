@@ -84,19 +84,33 @@ Tarea Académica/
 ├── README.md                     # Documento principal del proyecto
 ├── IMPLEMENTATION.md             # Bitácora detallada de implementación paso a paso
 ├── requirements.txt              # Dependencias del proyecto
-├── .gitignore                    # Reglas de exclusión para Git
-├── src/                          # Módulos reutilizables, procesadores y validadores
+├── .gitignore                    # Reglas de exclusión para Git y compilación LaTeX
+├── src/                          # Código modular y procesadores (OOP / OCP)
+│   ├── config/                   # Diccionarios de mapeo y esquemas por módulo
+│   ├── core/                     # BaseModuleProcessor y suite de validadores
+│   ├── processors/               # Implementaciones concretas por módulo ENAHO
+│   └── pipeline.py               # Orquestador multi-año y multi-módulo
+├── notebooks/                    # Flujo de trabajo interactivo por etapas
+│   ├── 01_modulos/               # Extracción y limpieza modular (01_vivienda_modulo01.ipynb)
+│   ├── 02_integracion/           # Unión relacional a nivel hogar y cruce municipal
+│   ├── 03_eda/                   # Análisis exploratorio multivariado de pobreza
+│   ├── 04_modelado/              # Modelos de clasificación supervisada out-of-time
+│   └── README.md                 # Guía del flujo de notebooks
+├── Documentation/                # Informe académico (PUCP 1INF24)
+│   ├── latex/                    # Master LaTeX (main.tex, main.pdf)
+│   └── sections/                 # Capítulos modulares (.md y .tex sincronizados)
 └── Data/
-    ├── 966-Modulo01/             # ENAHO 2024 - Módulo 01 (Vivienda)
-    │   ├── Enaho01-2024-100.csv
-    │   ├── Enaho01-2024-100_cleaned.csv
-    │   └── main.ipynb            # Notebook de análisis y EDA 2024
-    ├── 1031-Modulo01/            # ENAHO 2025 - Módulo 01 (Vivienda)
-    │   ├── Enaho01-2025-100.csv
-    │   ├── Enaho01-2025-100_cleaned.csv
-    │   └── main.ipynb            # Notebook de análisis y EDA 2025
-    ├── 966-Modulo02/ ... 05/ 34/ # Datos 2024 restantes
-    └── 1031-Modulo02/ ... 05/ 34/# Datos 2025 restantes
+    ├── 2024/
+    │   ├── enaho/                # Microdatos ENAHO 2024 (966-Modulo01 a 966-Modulo34)
+    │   └── municipal/            # Gasto presupuestal municipal MEF 2024
+    ├── 2025/
+    │   ├── enaho/                # Microdatos ENAHO 2025 (1031-Modulo01 a 1031-Modulo34)
+    │   └── municipal/            # Gasto presupuestal municipal MEF 2025
+    ├── 2026/
+    │   ├── enaho/                # Microdatos preliminares ENAHO 2026 (alerta temprana)
+    │   └── municipal/            # Gasto presupuestal municipal MEF 2026
+    ├── processed/                # Datasets limpios estandarizados (*_cleaned.csv)
+    └── Fuentes.md                # Enlaces oficiales INEI y MEF Datos Abiertos
 ```
 
 ---

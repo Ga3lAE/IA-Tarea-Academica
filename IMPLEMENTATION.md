@@ -53,10 +53,33 @@ flowchart LR
    - Comprobación de recuentos de filas esperados para Lima y Callao ($4,000 \le N \le 7,500$).
    - Aserción de unicidad de la llave primaria `(conglomerado, vivienda, hogar)`.
    - Comprobación de 0% nulos en columnas esenciales.
-5. **Refactorización de Notebooks:**
-   - Los notebooks `Data/966-Modulo01/main.ipynb` (2024) y `Data/1031-Modulo01/main.ipynb` (2025) fueron refactorizados para eliminar código duplicado y ejecutar el pipeline validado con visualizaciones claras.
+5. **Refactorización de Notebooks y Estructura Modular:**
+   - Se migró el código interactivo hacia `notebooks/01_modulos/01_vivienda_modulo01.ipynb`, consolidando el procesamiento y análisis de 2024 y 2025 en un flujo limpio que exporta directamente a `Data/processed/`.
 6. **Orquestación Multi-Año (`src/pipeline.py`):**
-   - Ejecución conjunta de 2024 (5,571 hogares) y 2025 (5,589 hogares) generando un dataset histórico inicial de **11,160 hogares limpios**.
+   - Ejecución conjunta de 2024 (5,571 hogares) y 2025 (5,589 hogares) generando un dataset histórico inicial de **11,160 hogares limpios** con almacenamiento centralizado en `Data/processed/`.
+7. **Documentación de Parámetros de Configuración (`BaseModuleProcessor`):**
+   - Se estandarizó la signatura de todos los procesadores para permitir parametrización flexible en runtime (delimitador, codificación, filtros geográficos, umbrales de validación) sin alterar el código fuente ni romper el principio Open/Closed.
+
+---
+
+### Referencia de Parámetros de `BaseModuleProcessor`
+
+Todos los procesadores de módulos (`Modulo01Processor`, `Modulo02Processor`, etc.) heredan de `BaseModuleProcessor` y admiten los siguientes argumentos:
+
+| Parámetro | Tipo | Por Defecto | Descripción |
+| :--- | :--- | :--- | :--- |
+| `file_path` | `str \| Path` | *(Obligatorio)* | Ruta al archivo CSV crudo de la ENAHO (ej. `Data/2025/enaho/1031-Modulo01/Enaho01-2025-100.csv`). |
+| `year` | `int \| None` | `None` | Año de la encuesta (ej. 2024, 2025). Si es `None`, se infiere del nombre del archivo o carpeta. |
+| `output_path` | `str \| Path \| None` | `None` | Ruta destino para guardar el CSV o Parquet limpio. Si es `None`, no se exporta a disco. |
+| `filter_geographic` | `bool` | `True` | Activa o desactiva el filtro geográfico por UBIGEO. Si es `False`, procesa los 25 departamentos a nivel nacional. |
+| `ubigeo_prefixes` | `str \| tuple \| list \| None` | `('07', '15')` | Prefijos de UBIGEO a filtrar (ej. `('07', '15')` para Lima/Callao, `('01', '02')` para Amazonas/Áncash). |
+| `filter_valid_results` | `bool` | `True` | Filtra entrevistas completas o con datos suficientes (`RESULT` $\in \{1, 2\}$). |
+| `sep` | `str \| None` | `None` (Auto) | Delimitador del CSV crudo de entrada. Si es `None`, auto-detecta si el archivo usa `,` o `;`. Permite forzar `','` o `';'`. |
+| `output_sep` | `str \| None` | `';'` | Delimitador para exportar el CSV limpio. Por defecto es `';'` (estándar para Excel en español). |
+| `encoding` | `str \| None` | `'latin-1'` | Codificación de caracteres del archivo original (típico de INEI: `latin-1`). |
+| `min_rows` | `int \| None` | Dinámico | Umbral mínimo de filas para la aserción de integridad. Se ajusta según el ámbito geográfico. |
+| `max_rows` | `int \| None` | Dinámico | Umbral máximo de filas para la aserción de integridad. |
+| `verbose` | `bool` | `True` | Imprime el progreso paso a paso en consola/Jupyter. |
 
 ---
 

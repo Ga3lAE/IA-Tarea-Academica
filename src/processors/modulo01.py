@@ -3,7 +3,7 @@ Concrete processor for ENAHO Modulo 01 (Vivienda y Hogar).
 Strictly separates categorical features (booleans, 1-2-3 survey codes) from real numeric variables.
 Implements dwelling inheritance, skip-pattern resolution, explicit domain labeling, and validation.
 """
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Dict, Any, Sequence
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -148,12 +148,26 @@ class Modulo01Processor(BaseModuleProcessor):
         return mapped
 
     def validate_processed_data(self, df: pd.DataFrame) -> None:
-        """Runs the validation suite on final clean dataset."""
-        # 1. Row count validation
+        """Runs the validation suite on final clean dataset with dynamic row limits."""
+        # 1. Row count validation (adapt to geographic scope)
+        if self.min_rows is not None or self.max_rows is not None:
+            min_r = self.min_rows
+            max_r = self.max_rows
+        elif not self.filter_geographic or not self.ubigeo_prefixes:
+            min_r = 25000  # National Peru lower bound
+            max_r = 60000  # National Peru upper bound
+        elif self.ubigeo_prefixes in (("07", "15"), ("15", "07")):
+            min_r = MIN_EXPECTED_ROWS_LIMA_CALLAO
+            max_r = MAX_EXPECTED_ROWS_LIMA_CALLAO
+        else:
+            # Custom department/region filter (e.g. ('01', '02'))
+            min_r = 50
+            max_r = None
+
         RowValidator.validate_row_count(
             df,
-            min_rows=MIN_EXPECTED_ROWS_LIMA_CALLAO,
-            max_rows=MAX_EXPECTED_ROWS_LIMA_CALLAO,
+            min_rows=min_r,
+            max_rows=max_r,
             context_name=f"Modulo 01 ({self.year})"
         )
 

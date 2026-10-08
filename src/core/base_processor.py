@@ -5,12 +5,10 @@ Defines the template method workflow for any ENAHO module across multiple years.
 from abc import ABC, abstractmethod
 import os
 from pathlib import Path
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Tuple, Union, Sequence
 import pandas as pd
 
 from src.config.base import (
-    DEFAULT_ENCODING,
-    DEFAULT_UBIGEO_PREFIXES,
     VALID_SURVEY_RESULTS,
     PRIMARY_KEY_HOUSEHOLD
 )
@@ -36,21 +34,91 @@ class BaseModuleProcessor(ABC):
         file_path: Union[str, Path],
         year: Optional[int] = None,
         output_path: Optional[Union[str, Path]] = None,
-        filter_lima_callao: bool = True,
+        filter_geographic: bool = True,
+        filter_lima_callao: Optional[bool] = None,  # Backward compatibility alias
         filter_valid_results: bool = True,
-        ubigeo_prefixes: Tuple[str, ...] = DEFAULT_UBIGEO_PREFIXES,
-        encoding: str = DEFAULT_ENCODING,
-        sep: Optional[str] = None,  # If None, automatically detects ; or ,
+        ubigeo_prefixes: Optional[Union[str, Sequence[str]]] = None,
+        encoding: Optional[str] = None,
+        sep: Optional[str] = None,          # None = auto-detect (; or ,); can be forced
+        output_sep: Optional[str] = None,   # None = uses DEFAULT_OUTPUT_SEPARATOR (;)
+        min_rows: Optional[int] = None,
+        max_rows: Optional[int] = None,
         verbose: bool = True
     ):
+        """
+        Initializes an ENAHO module preprocessor.
+
+        Parameters
+        ----------
+        file_path : Union[str, Path]
+            Path to the raw CSV file (e.g. 'Data/1031-Modulo01/Enaho01-2025-100.csv').
+        year : Optional[int], default=None
+            Survey year (e.g. 2024, 2025). If None, automatically inferred from the file path.
+        output_path : Optional[Union[str, Path]], default=None
+            Destination path for the cleaned output file (CSV or Parquet). If None, no file is exported.
+        filter_geographic : bool, default=True
+            Whether to filter households by geographical code (UBIGEO).
+            - True: Filters using `ubigeo_prefixes` (by default Lima & Callao).
+            - False: Disables geographic filtering, processing the entire national dataset (all 25 departments).
+        filter_valid_results : bool, default=True
+            Whether to keep only completed/sufficient interviews (RESULT 1: Completa, 2: Incompleta).
+        ubigeo_prefixes : Optional[Union[str, Sequence[str]]], default=None
+            Department or province prefix codes to filter by (e.g., ('07', '15') for Lima/Callao,
+            ('01',) for Amazonas, ('02',) for Áncash, ('20', '13') for Piura/La Libertad).
+            If None and filter_geographic=True, defaults to DEFAULT_UBIGEO_PREFIXES in src/config/base.py.
+        encoding : Optional[str], default=None
+            File character encoding (e.g. 'latin-1', 'utf-8', 'cp1252').
+            If None, uses DEFAULT_ENCODING ('latin-1').
+        sep : Optional[str], default=None
+            Input column delimiter of the raw CSV.
+            - None: AUTO-DETECT. Inspects header and sample lines to detect ',' vs ';'.
+            - ';' or ',': Forces reading with the specified delimiter.
+        output_sep : Optional[str], default=None
+            Delimiter used when saving the cleaned CSV via `output_path`.
+            If None, uses DEFAULT_OUTPUT_SEPARATOR (';', standard for Excel in Spanish).
+        min_rows : Optional[int], default=None
+            Custom minimum row count assertion.
+            If None, automatically inferred based on scope (Lima/Callao: 4,000, Nacional: 25,000, Custom: 50).
+        max_rows : Optional[int], default=None
+            Custom maximum row count assertion.
+            If None, automatically inferred based on scope.
+        verbose : bool, default=True
+            Whether to print progress log messages during execution.
+        """
+        # Dynamically import defaults from config at instantiation time (not import time)
+        from src.config.base import (
+            DEFAULT_ENCODING,
+            DEFAULT_SEPARATOR,
+            DEFAULT_OUTPUT_SEPARATOR,
+            DEFAULT_UBIGEO_PREFIXES
+        )
+
         self.file_path = Path(file_path)
         self.year = year or self._infer_year_from_path(self.file_path)
         self.output_path = Path(output_path) if output_path else None
-        self.filter_lima_callao = filter_lima_callao
+        
+        # Handle backward compatibility for filter_lima_callao
+        if filter_lima_callao is not None:
+            self.filter_geographic = filter_lima_callao
+        else:
+            self.filter_geographic = filter_geographic
+
         self.filter_valid_results = filter_valid_results
-        self.ubigeo_prefixes = ubigeo_prefixes
-        self.encoding = encoding
-        self.sep = sep
+        
+        # Resolve UBIGEO prefixes dynamically
+        if ubigeo_prefixes is not None:
+            if isinstance(ubigeo_prefixes, str):
+                self.ubigeo_prefixes = (ubigeo_prefixes,)
+            else:
+                self.ubigeo_prefixes = tuple(ubigeo_prefixes)
+        else:
+            self.ubigeo_prefixes = tuple(DEFAULT_UBIGEO_PREFIXES) if DEFAULT_UBIGEO_PREFIXES else None
+
+        self.encoding = encoding or DEFAULT_ENCODING
+        self.sep = sep if sep is not None else DEFAULT_SEPARATOR
+        self.output_sep = output_sep or DEFAULT_OUTPUT_SEPARATOR
+        self.min_rows = min_rows
+        self.max_rows = max_rows
         self.verbose = verbose
 
     @staticmethod
@@ -68,11 +136,40 @@ class BaseModuleProcessor(ABC):
             prefix = f"[{self.__class__.__name__}" + (f" - {self.year}" if self.year else "") + "]"
             print(f"{prefix} {message}")
 
+    def _check_git_lfs_pointer(self) -> None:
+        """Detects if the file is an unresolved Git LFS pointer text file."""
+        try:
+            with open(self.file_path, "r", encoding="utf-8", errors="ignore") as f:
+                first_line = f.readline().strip()
+                if first_line.startswith("version https://git-lfs.github.com/spec/v1"):
+                    raise RuntimeError(
+                        f"\n[GIT LFS ERROR] El archivo '{self.file_path.name}' es un puntero de Git LFS (3 líneas) y no contiene la data real.\n"
+                        f"Para descargar la data real, ejecuta en tu terminal:\n"
+                        f"    git lfs checkout\n"
+                        f"o:\n"
+                        f"    git lfs pull\n"
+                    )
+        except UnicodeDecodeError:
+            pass
+
     def _detect_delimiter(self) -> str:
-        """Automatically detects whether the file is comma or semicolon separated."""
+        """Robustly detects whether the file is comma or semicolon separated."""
         with open(self.file_path, 'r', encoding=self.encoding, errors='ignore') as f:
-            first_line = f.readline()
-            if first_line.count(';') > first_line.count(','):
+            sample_lines = [f.readline() for _ in range(5)]
+            sample_text = "".join(sample_lines)
+
+            # Check header line count first
+            header = sample_lines[0] if sample_lines else ""
+            sc_count = header.count(';')
+            cm_count = header.count(',')
+
+            if sc_count > cm_count:
+                return ';'
+            elif cm_count > sc_count:
+                return ','
+
+            # Check aggregate across multiple lines
+            if sample_text.count(';') > sample_text.count(','):
                 return ';'
             return ','
 
@@ -120,11 +217,14 @@ class BaseModuleProcessor(ABC):
     # LIFECYCLE HOOKS (Extensible points)
     # ==========================================
     def load_data(self) -> pd.DataFrame:
-        """Loads data from CSV handling whitespace, delimiter, and encoding."""
+        """Loads data from CSV handling whitespace, delimiter, encoding, and Git LFS check."""
         if not self.file_path.exists():
             raise FileNotFoundError(f"Input file does not exist: {self.file_path}")
 
-        delimiter = self.sep if self.sep is not None else self._detect_delimiter()
+        # Check if the file is just an unresolved Git LFS pointer
+        self._check_git_lfs_pointer()
+
+        delimiter = self.sep if self.sep not in (None, 'auto') else self._detect_delimiter()
         self.log(f"Detected delimiter: '{delimiter}' for {self.file_path.name}")
 
         df = pd.read_csv(
@@ -142,7 +242,7 @@ class BaseModuleProcessor(ABC):
         pass
 
     def filter_scope(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Filters completed interviews and geographic region (Lima & Callao)."""
+        """Filters completed interviews and geographic region (custom UBIGEO prefixes or national)."""
         filtered = df.copy()
 
         # Interview result filter (1: Complete, 2: Incomplete with sufficient data)
@@ -150,10 +250,16 @@ class BaseModuleProcessor(ABC):
             filtered['RESULT'] = pd.to_numeric(filtered['RESULT'], errors='coerce')
             filtered = filtered[filtered['RESULT'].isin(VALID_SURVEY_RESULTS)]
 
-        # Lima and Callao UBIGEO filter
-        if self.filter_lima_callao and 'UBIGEO' in filtered.columns:
-            filtered['UBIGEO'] = filtered['UBIGEO'].astype(str).str.strip().str.zfill(6)
+        # Standardize UBIGEO to 6-digit zero-padded string
+        if 'UBIGEO' in filtered.columns:
+            filtered['UBIGEO'] = filtered['UBIGEO'].astype(str).str.strip().str.split('.').str[0].str.zfill(6)
+
+        # Geographic UBIGEO filter (if enabled and prefixes provided)
+        if self.filter_geographic and self.ubigeo_prefixes and 'UBIGEO' in filtered.columns:
             filtered = filtered[filtered['UBIGEO'].str.startswith(self.ubigeo_prefixes)]
+            self.log(f"Applied UBIGEO filter with prefixes {self.ubigeo_prefixes}")
+        else:
+            self.log("Geographic filter disabled: Processing national scope (all UBIGEOs)")
 
         return filtered
 
@@ -178,10 +284,10 @@ class BaseModuleProcessor(ABC):
         pass
 
     def save_data(self, df: pd.DataFrame) -> None:
-        """Exports processed DataFrame to CSV or Parquet."""
+        """Exports processed DataFrame to CSV (with output_sep) or Parquet."""
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         if str(self.output_path).endswith('.parquet'):
             df.to_parquet(self.output_path, index=True)
         else:
-            df.to_csv(self.output_path, index=True)
-        self.log(f"Exported clean dataset to: {self.output_path}")
+            df.to_csv(self.output_path, sep=self.output_sep, index=True)
+        self.log(f"Exported clean dataset to: {self.output_path} (sep='{self.output_sep}')")
