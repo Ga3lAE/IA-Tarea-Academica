@@ -96,7 +96,10 @@ Documentation/
     ├── 05_conclusion/                        # Sección 5: Conclusiones del estudio
     ├── 06_sugerencias_futuras/               # Sección 6: Extensiones y trabajos futuros
     ├── 07_implicancias_eticas/               # Sección 7: Equidad, sesgo y justicia algorítmica
-    └── 08_declaraciones_referencias/         # Sección 8: Repositorio, autorías y referencias IEEE
+    ├── 08_link_repositorio/                  # Sección 8: Enlace y credenciales del repositorio GitHub
+    ├── 09_declaracion_contribucion/          # Sección 9: Matriz de roles y aportes de cada integrante
+    ├── 10_declaracion_ia/                    # Sección 10: Declaración de uso ético de herramientas de IA
+    └── 11_referencias/                       # Sección 11: Base bibliográfica IEEE y archivo .bib
 ```
 
 ---
