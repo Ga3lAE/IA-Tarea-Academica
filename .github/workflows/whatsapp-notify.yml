@@ -1,0 +1,31 @@
+name: Notificación WhatsApp
+
+on:
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    types: [opened, closed]
+
+jobs:
+  notify:
+    runs-on: self-hosted  # Obligatorio: corre directo en tu Ubuntu
+    steps:
+      - name: Enviar mensaje al grupo de WhatsApp
+        run: |
+          AUTHOR="${{ github.actor }}"
+          REF="${{ github.ref_name }}"
+          EVENT="${{ github.event_name }}"
+          REPO="${{ github.repository }}"
+          COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | tr '\n' ' ' | sed 's/"/\\"/g')
+
+          # Formateo del mensaje negritas de WhatsApp
+          MESSAGE="*Actualización en el Repositorio*\n\n *Repo:* $REPO\n *Autor:* $AUTHOR\n *Evento:* $EVENT\n *Rama:* $REF\n💬 *Mensaje:* $COMMIT_MSG"
+
+          # Petición a Evolution API en localhost
+          curl -s -X POST http://localhost:8282/message/sendText/bot_repo \
+            -H "apikey: clave_personal_privada" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"number\": \"120363410578552230@g.us\",
+              \"text\": \"$MESSAGE\"
+            }"
