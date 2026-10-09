@@ -21,6 +21,8 @@
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{booktabs}
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, calc, backgrounds}
 \usepackage{microtype}
 \usepackage{cite}
 \usepackage{url}
@@ -72,16 +74,13 @@
     {\fontsize{14}{17}\selectfont\textbf{“CLASIFICACIÓN DE POBREZA EN LIMA Y CALLAO MEDIANTE APRENDIZAJE SUPERVISADO SOBRE MICRODATOS ENAHO”}}
     \par\vspace{0.7em}
     \raggedright
-    {\fontsize{9}{11}\selectfont\textbf{Autor/Autores: } Gael Arias, Integrante 2, Integrante 3}
+    {\fontsize{9}{11}\selectfont\textbf{Autores: } Gael Arias, Valeshka Lavado, Melanie Mallqui, Franco Salcedo}
     \par\vspace{0.7em}
   \end{center}
 
   \begin{minipage}{\textwidth}
     \fontsize{9}{11}\selectfont
-    \textbf{Resumen}---Debe contener una descripción muy breve del trabajo, resumiendo el problema que se abordó, el objetivo general, la solución o soluciones planteadas, los resultados obtenidos y la conclusión principal.\par
-    {\color{lightmint}\textit{[Propuesta inicial:]} Este trabajo aborda la clasificación de hogares en situación de pobreza en Lima y Callao mediante algoritmos de aprendizaje supervisado aplicados a microdatos ENAHO (2024--2025). El objetivo es inducir un clasificador binario que identifique hogares vulnerables usando variables observables de vivienda, estructura demográfica e informalidad laboral, minimizando el error de exclusión frente a modelos lineales convencionales.}
-    \par\vspace{0.3em}
-    Se recomienda no exceder 12 líneas; no debe contener citaciones, abreviaciones o acrónimos; no debe incluir expresiones matemáticas o referencias bibliográficas.
+    \textbf{Resumen}---Este trabajo aborda la identificación y clasificación de hogares en situación de pobreza monetaria en Lima Metropolitana y el Callao mediante el desarrollo de un sistema de aprendizaje supervisado aplicado a microdatos multimodulares de la Encuesta Nacional de Hogares (ENAHO 2024--2025). Ante la inobservabilidad de ingresos informales y las limitaciones de los modelos lineales tradicionales de focalización, se formula un pipeline con operadores específicos de imputación intra-predio, agregación multinivel y agrupación semántica por dominio, evaluando una jerarquía de clasificadores optimizados con funciones de pérdida sensibles al costo. El objetivo es maximizar la detección de hogares vulnerables y mitigar el error de exclusión social bajo un esquema estricto de validación temporal fuera de tiempo.
     \par\vspace{0.5em}
     \centerline{\color{primarygreen}\textbf{\textit{——————————\ensuremath{\blacklozenge}——————————}}}
     \vspace{0.8em}
@@ -98,6 +97,9 @@
 \input{../sections/05_conclusion/conclusion.tex}
 \input{../sections/06_sugerencias_futuras/sugerencias_futuras.tex}
 \input{../sections/07_implicancias_eticas/implicancias_eticas.tex}
-\input{../sections/08_declaraciones_referencias/declaraciones_referencias.tex}
+\input{../sections/08_link_repositorio/link_repositorio.tex}
+\input{../sections/09_declaracion_contribucion/declaracion_contribucion.tex}
+\input{../sections/10_declaracion_ia/declaracion_ia.tex}
+\input{../sections/11_referencias/referencias.tex}
 
 \end{document}
