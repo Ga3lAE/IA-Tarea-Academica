@@ -36,7 +36,22 @@ flowchart TD
 
 ---
 
-## 2. Iteración Activa: Auditoría `2026-10-08_20-03`
+## 2. Iteración Activa: Auditoría `2026-10-08_20-30` (v2) — **implementada**
+
+Todo el material del plan v2, el PDF del entregable parcial y los scripts que reproducen sus cifras están en **[`Plan 2/`](./Plan%202/README.md)**.
+
+Auditoría del plan v1 (`2026-10-08_20-03`) contra la rúbrica, los microdatos y las fuentes originales. **v2 no reemplaza a v1: la corrige.** Para implementar, se aplica v1 con las erratas y agregados de v2.
+
+| Archivo de Trabajo | Timestamp | Descripción y Alcance |
+| :--- | :---: | :--- |
+| **[`problemas_2026-10-08_20-30.md`](./Plan%202/problemas_2026-10-08_20-30.md)** | `2026-10-08_20-30` | Veredicto sobre v1: **15 errores factuales** introducidos (E-01…E-15), 5 inconsistencias metodológicas y 7 vacíos frente a la rúbrica (G-01…G-07). |
+| **[`metodologia_2026-10-08_20-30.md`](./Plan%202/metodologia_2026-10-08_20-30.md)** | `2026-10-08_20-30` | Cifras 2025 corregidas, fichas de papers verificadas, H2 como prueba de equivalencia, regla de decisión sin doble compensación, pesos muestrales y presupuesto de páginas. |
+| **[`concretizacion_2026-10-08_20-30.md`](./Plan%202/concretizacion_2026-10-08_20-30.md)** | `2026-10-08_20-30` | `references.bib` definitivo, textos LaTeX corregidos, parches 6–9 y orden de ejecución con criterios de aceptación. |
+| **[`scripts/chequeo_cobertura.py`](./Plan%202/scripts/chequeo_cobertura.py)** | `2026-10-08_20-30` | Evidencia de H2: error de exclusión con B = 20 % para PMT-MCO, logística y RF, con IC *bootstrap* por conglomerados. |
+
+**Hallazgo clave de v2:** con cobertura del 20 %, PMT-MCO (0,408), logística (0,411) y random forest (0,411) empatan (IC 95 % de las diferencias dentro de ±0,03). La ganancia viene de las **variables** (PR-AUC 0,35 → 0,55), no del algoritmo.
+
+### Iteración anterior: Auditoría `2026-10-08_20-03` (v1)
 
 A partir de la revisión técnica del commit `44c567a` y el borrador de `main.pdf`, se realizó una auditoría completa contrastada contra los microdatos de la ENAHO 2024–2025. Los archivos de esta entrega son:
 
@@ -89,6 +104,8 @@ A partir de la revisión técnica del commit `44c567a` y el borrador de `main.pd
 | **Metodología y Adaptaciones** | 6 | 3.5 | **6.0** | Tabla explícita de adaptaciones ↔ literatura; protocolo anti-fuga (purga de 930 hogares panel); línea base PMT-MCO de $\ln(\text{gasto})$; diagrama TikZ autosuficiente. |
 | **Calidad de Redacción y Formato** | 2 | 1.0 | **2.0** | Purgado de textos de plantilla; resumen $\le 12$ líneas sin fórmulas ni citas; declaración de uso de IA reglamentaria; control estricto de $\le 4$ páginas de cuerpo. |
 | **TOTAL** | **20** | **11.0 / 20** | **20.0 / 20** | **Calificación de Excelencia.** |
+
+> **Actualización v2 (`2026-10-08_20-30`):** esta proyección supone que v1 es correcto. Con los errores detectados en `problemas_2026-10-08_20-30.md`, aplicar v1 tal cual daría ~16–17/20; aplicar v1 + v2, ~19–20/20 (ver `metodologia_2026-10-08_20-30.md` §7).
 
 ---
 
