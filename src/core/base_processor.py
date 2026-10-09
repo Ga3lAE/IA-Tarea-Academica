@@ -40,7 +40,7 @@ class BaseModuleProcessor(ABC):
         ubigeo_prefixes: Optional[Union[str, Sequence[str]]] = None,
         encoding: Optional[str] = None,
         sep: Optional[str] = None,          # None = auto-detect (; or ,); can be forced
-        output_sep: Optional[str] = None,   # None = uses DEFAULT_OUTPUT_SEPARATOR (;)
+        output_sep: Optional[str] = None,   # None = uses DEFAULT_OUTPUT_SEPARATOR (,)
         min_rows: Optional[int] = None,
         max_rows: Optional[int] = None,
         verbose: bool = True
@@ -63,7 +63,7 @@ class BaseModuleProcessor(ABC):
         filter_valid_results : bool, default=True
             Whether to keep only completed/sufficient interviews (RESULT 1: Completa, 2: Incompleta).
         ubigeo_prefixes : Optional[Union[str, Sequence[str]]], default=None
-            Department or province prefix codes to filter by (e.g., ('07', '15') for Lima/Callao,
+            Department or province prefix codes to filter by (e.g., ('07', '1501') for Lima Metropolitana y Callao,
             ('01',) for Amazonas, ('02',) for Áncash, ('20', '13') for Piura/La Libertad).
             If None and filter_geographic=True, defaults to DEFAULT_UBIGEO_PREFIXES in src/config/base.py.
         encoding : Optional[str], default=None
@@ -75,10 +75,10 @@ class BaseModuleProcessor(ABC):
             - ';' or ',': Forces reading with the specified delimiter.
         output_sep : Optional[str], default=None
             Delimiter used when saving the cleaned CSV via `output_path`.
-            If None, uses DEFAULT_OUTPUT_SEPARATOR (';', standard for Excel in Spanish).
+            If None, uses DEFAULT_OUTPUT_SEPARATOR (',').
         min_rows : Optional[int], default=None
             Custom minimum row count assertion.
-            If None, automatically inferred based on scope (Lima/Callao: 4,000, Nacional: 25,000, Custom: 50).
+            If None, automatically inferred based on scope (Lima Metropolitana: 3,800, Dpto. Lima + Callao: 4,000, Nacional: 25,000, Custom: 50).
         max_rows : Optional[int], default=None
             Custom maximum row count assertion.
             If None, automatically inferred based on scope.

@@ -83,8 +83,8 @@ CATEGORICAL_MAPPINGS_MOD01: Dict[str, Dict[Any, str]] = {
         4: 'camion_cisterna',
         5: 'pozo_subterraneo',
         6: 'manantial_puquio',
-        7: 'rio_acequia_laguna',
-        8: 'otro'
+        7: 'otro',                # INEI: 7 = Otra
+        8: 'rio_acequia_laguna'   # INEI: 8 = Río, acequia, lago, laguna
     },
     'conexion_bano': {
         1: 'red_interior',
@@ -98,15 +98,14 @@ CATEGORICAL_MAPPINGS_MOD01: Dict[str, Dict[Any, str]] = {
         9: 'sin_bano_campo_abierto'
     },
     'combustible_cocina': {
+        # Códigos según Diccionario ENAHO 2024-2025 (P113A): no existe el código 4
         1: 'electricidad',
         2: 'gas_glp',
         3: 'gas_natural',
-        4: 'kerosene',
         5: 'carbon',
         6: 'lena',
-        7: 'bosta_estiercol',
-        8: 'no_cocina',
-        9: 'otro'
+        7: 'otro',
+        8: 'no_cocina'
     },
     'tenencia_vivienda': {
         1: 'alquilada',
@@ -172,8 +171,13 @@ SKIP_PATTERN_DEFAULTS: Dict[str, str] = {
 }
 
 # Validation constraints
+# Departamento de Lima completo + Callao (prefijos UBIGEO '15' y '07')
 MIN_EXPECTED_ROWS_LIMA_CALLAO: int = 4000
 MAX_EXPECTED_ROWS_LIMA_CALLAO: int = 7500
+
+# Lima Metropolitana y Callao = DOMINIO 8 (prefijos UBIGEO '1501' y '07'): 4,090 (2024) y 4,129 (2025)
+MIN_EXPECTED_ROWS_LIMA_METRO: int = 3800
+MAX_EXPECTED_ROWS_LIMA_METRO: int = 4600
 
 STRICT_NON_NULL_COLUMNS_MOD01: List[str] = [
     'tipo_vivienda',

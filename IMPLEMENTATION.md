@@ -46,17 +46,17 @@ flowchart LR
 2. **Detección Automática de Delimitadores:**
    - La ENAHO 2025 utiliza punto y coma (`;`), mientras que 2024 utiliza comas (`,`). El método `_detect_delimiter()` en la clase base lee la cabecera y adapta dinámicamente el parser de Pandas.
 3. **Resolución de Nulos Estructurales en Vivienda:**
-   - **Los 120 nulos (2.15%)** en materiales de piso, pared y dormitorios correspondían a hogares secundarios (`HOGAR 22, 33...`) que cohabitan en una misma vivienda con el hogar principal (`HOGAR 11`). Se resolvieron mediante propagación intra-vivienda (`ffill().bfill()` por `conglomerado` y `vivienda`), logrando **0.00% de nulos**.
+   - **Los 72 nulos (1.76%) de 2024 y 96 (2.33%) de 2025** en materiales de piso, pared y dormitorios correspondían a hogares secundarios (`HOGAR 22, 33...`) que cohabitan en una misma vivienda con el hogar principal (`HOGAR 11`). Se resolvieron mediante propagación intra-vivienda (`transform(ffill().bfill())` aislado por `conglomerado` y `vivienda`), logrando **0.00% de nulos**.
    - **Nulos en Título de Propiedad (32%) y SUNARP (57%):** Se fusionaron en la feature de alta señal jurídica `seguridad_tenencia`.
 4. **Validaciones Estrictas (`src/core/validators.py`):**
    - Comprobación previa de columnas obligatorias.
-   - Comprobación de recuentos de filas esperados para Lima y Callao ($4,000 \le N \le 7,500$).
+   - Comprobación de recuentos de filas esperados para Lima Metropolitana, `DOMINIO 8` ($3,800 \le N \le 4,600$).
    - Aserción de unicidad de la llave primaria `(conglomerado, vivienda, hogar)`.
    - Comprobación de 0% nulos en columnas esenciales.
 5. **Refactorización de Notebooks y Estructura Modular:**
    - Se migró el código interactivo hacia `notebooks/01_modulos/01_vivienda_modulo01.ipynb`, consolidando el procesamiento y análisis de 2024 y 2025 en un flujo limpio que exporta directamente a `Data/processed/`.
 6. **Orquestación Multi-Año (`src/pipeline.py`):**
-   - Ejecución conjunta de 2024 (5,571 hogares) y 2025 (5,589 hogares) generando un dataset histórico inicial de **11,160 hogares limpios** con almacenamiento centralizado en `Data/processed/`.
+   - Ejecución conjunta de 2024 (4,090 hogares) y 2025 (4,129 hogares) de Lima Metropolitana (`DOMINIO 8`) generando un dataset histórico de **8,219 hogares limpios**, indexado por `(anio_encuesta, conglomerado, vivienda, hogar)` con almacenamiento centralizado en `Data/processed/`.
 7. **Documentación de Parámetros de Configuración (`BaseModuleProcessor`):**
    - Se estandarizó la signatura de todos los procesadores para permitir parametrización flexible en runtime (delimitador, codificación, filtros geográficos, umbrales de validación) sin alterar el código fuente ni romper el principio Open/Closed.
 
@@ -72,10 +72,10 @@ Todos los procesadores de módulos (`Modulo01Processor`, `Modulo02Processor`, et
 | `year` | `int \| None` | `None` | Año de la encuesta (ej. 2024, 2025). Si es `None`, se infiere del nombre del archivo o carpeta. |
 | `output_path` | `str \| Path \| None` | `None` | Ruta destino para guardar el CSV o Parquet limpio. Si es `None`, no se exporta a disco. |
 | `filter_geographic` | `bool` | `True` | Activa o desactiva el filtro geográfico por UBIGEO. Si es `False`, procesa los 25 departamentos a nivel nacional. |
-| `ubigeo_prefixes` | `str \| tuple \| list \| None` | `('07', '15')` | Prefijos de UBIGEO a filtrar (ej. `('07', '15')` para Lima/Callao, `('01', '02')` para Amazonas/Áncash). |
+| `ubigeo_prefixes` | `str \| tuple \| list \| None` | `('07', '1501')` | Prefijos de UBIGEO a filtrar (ej. `('07', '1501')` para Lima Metropolitana = `DOMINIO 8`; `('07', '15')` para todo el departamento de Lima + Callao, `('01', '02')` para Amazonas/Áncash). |
 | `filter_valid_results` | `bool` | `True` | Filtra entrevistas completas o con datos suficientes (`RESULT` $\in \{1, 2\}$). |
 | `sep` | `str \| None` | `None` (Auto) | Delimitador del CSV crudo de entrada. Si es `None`, auto-detecta si el archivo usa `,` o `;`. Permite forzar `','` o `';'`. |
-| `output_sep` | `str \| None` | `';'` | Delimitador para exportar el CSV limpio. Por defecto es `';'` (estándar para Excel en español). |
+| `output_sep` | `str \| None` | `','` | Delimitador para exportar el CSV limpio. Por defecto es `','`. |
 | `encoding` | `str \| None` | `'latin-1'` | Codificación de caracteres del archivo original (típico de INEI: `latin-1`). |
 | `min_rows` | `int \| None` | Dinámico | Umbral mínimo de filas para la aserción de integridad. Se ajusta según el ámbito geográfico. |
 | `max_rows` | `int \| None` | Dinámico | Umbral máximo de filas para la aserción de integridad. |
@@ -121,7 +121,7 @@ Todos los procesadores de módulos (`Modulo01Processor`, `Modulo02Processor`, et
   $$y = 1 \text{ si } \text{POBREZA} \in [1, 2], \quad y = 0 \text{ si } \text{POBREZA} = 3$$
 - **Regla Estricta de Prevención de Data Leakage:**
   - Descarte total de sumatorias monetarias de ingreso y gasto (`GASHOG2D`, `INGHOG2D`, `LINEA`, etc.).
-- Fusión interna de todos los módulos limpios utilizando como llave `['conglomerado', 'vivienda', 'hogar']`.
+- Fusión interna de todos los módulos limpios utilizando como llave `['anio_encuesta', 'conglomerado', 'vivienda', 'hogar']` (930 hogares panel se repiten entre 2024 y 2025).
 
 ---
 
@@ -139,7 +139,7 @@ Todos los procesadores de módulos (`Modulo01Processor`, `Modulo02Processor`, et
 
 ### Objetivos Específicos
 1. **Esquema de Partición:**
-   - `StratifiedKFold` (5 folds) preservando el ratio de desbalance en cada split.
+   - `GroupKFold` (5 folds) por conglomerado en 2024 y prueba fuera de tiempo en 2025 **sin los 930 hogares panel** (ver `Documentation/Observaciones a levantar/Plan 2`).
 2. **Modelos Candidatos:**
    - **Baseline:** Regresión Logística regularizada (Lasso/Ridge) con `class_weight='balanced'`.
    - **Árboles Ensamble:** Random Forest Classifier.

@@ -23,7 +23,9 @@ from src.config.modulo01 import (
     SKIP_PATTERN_DEFAULTS,
     STRICT_NON_NULL_COLUMNS_MOD01,
     MIN_EXPECTED_ROWS_LIMA_CALLAO,
-    MAX_EXPECTED_ROWS_LIMA_CALLAO
+    MAX_EXPECTED_ROWS_LIMA_CALLAO,
+    MIN_EXPECTED_ROWS_LIMA_METRO,
+    MAX_EXPECTED_ROWS_LIMA_METRO
 )
 from src.config.base import PRIMARY_KEY_HOUSEHOLD
 
@@ -50,13 +52,17 @@ class Modulo01Processor(BaseModuleProcessor):
         for col in DWELLING_INHERITANCE_COLUMNS:
             if col in cleaned.columns:
                 cleaned[col] = cleaned[col].astype(str).str.strip().replace({'': np.nan, 'nan': np.nan, 'None': np.nan})
-                # Forward fill within the same physical dwelling (CONGLOME, VIVIENDA)
-                cleaned[col] = cleaned.groupby(['CONGLOME', 'VIVIENDA'])[col].ffill().bfill()
+                # Forward/backward fill strictly within the same physical dwelling (CONGLOME, VIVIENDA)
+                cleaned[col] = cleaned.groupby(['CONGLOME', 'VIVIENDA'])[col].transform(lambda s: s.ffill().bfill())
 
         # Clean numeric counts
         for num_col in ['P104', 'P104A']:
             if num_col in cleaned.columns:
-                cleaned[num_col] = pd.to_numeric(cleaned[num_col], errors='coerce').fillna(1)
+                cleaned[num_col] = pd.to_numeric(cleaned[num_col], errors='coerce')
+                n_fallback = int((cleaned[num_col].isna() | (cleaned[num_col] <= 0)).sum())
+                if n_fallback:
+                    self.log(f"{num_col}: {n_fallback} valores nulos o <= 0 reemplazados por 1 (fallback)")
+                cleaned[num_col] = cleaned[num_col].fillna(1)
                 cleaned[num_col] = cleaned[num_col].apply(lambda x: 1 if x <= 0 else x)
 
         return cleaned
@@ -122,8 +128,11 @@ class Modulo01Processor(BaseModuleProcessor):
                 # Map using integer dict
                 mapped_series = num_series.map(mapping)
 
-                # Default fallback for skip patterns if any
+                # Default fallback for skip patterns if any (logged for transparency)
                 default_val = SKIP_PATTERN_DEFAULTS.get(col, 'otro')
+                n_fallback = int(mapped_series.isna().sum())
+                if n_fallback:
+                    self.log(f"{col}: {n_fallback} registros sin código válido asignados a '{default_val}' (fallback)")
                 mapped[col] = mapped_series.fillna(default_val)
                 mapped[col] = mapped[col].replace({'': default_val, 'nan': default_val})
 
@@ -156,7 +165,12 @@ class Modulo01Processor(BaseModuleProcessor):
         elif not self.filter_geographic or not self.ubigeo_prefixes:
             min_r = 25000  # National Peru lower bound
             max_r = 60000  # National Peru upper bound
-        elif self.ubigeo_prefixes in (("07", "15"), ("15", "07")):
+        elif set(self.ubigeo_prefixes) == {"07", "1501"}:
+            # Lima Metropolitana y Callao (DOMINIO 8)
+            min_r = MIN_EXPECTED_ROWS_LIMA_METRO
+            max_r = MAX_EXPECTED_ROWS_LIMA_METRO
+        elif set(self.ubigeo_prefixes) == {"07", "15"}:
+            # Departamento de Lima completo + Callao (incluye Lima Provincias)
             min_r = MIN_EXPECTED_ROWS_LIMA_CALLAO
             max_r = MAX_EXPECTED_ROWS_LIMA_CALLAO
         else:

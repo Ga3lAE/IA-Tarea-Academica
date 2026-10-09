@@ -27,29 +27,29 @@ Para construir un modelo de predicción e inferencia real (útil para focalizaci
 
 Los datos provienen de la **ENAHO con Metodología Actualizada** del INEI para los periodos post-pandemia (**2024 y 2025**, ampliable a **2023**):
 
-| Módulo | Archivo Raw | Nombre Temático | Nivel de Granularidad | Registros (Lima y Callao) |
+| Módulo | Archivo Raw | Nombre Temático | Nivel de Granularidad | Registros (Lima Metropolitana, `DOMINIO 8`) |
 | :--- | :--- | :--- | :--- | :---: |
-| **Módulo 34** | `Sumaria-*.csv` | Resumen de Hogares y Target Oficial | Hogar | ~5,580 / año |
-| **Módulo 01** | `Enaho01-*-100.csv`| Características de la Vivienda y Servicios Básicos | Hogar | ~5,580 / año |
-| **Módulo 02** | `Enaho01-*-200.csv`| Características Demográficas de los Miembros | Persona | ~18,000 / año |
-| **Módulo 03** | `Enaho01A-*-300.csv`| Educación y Capital Humano ($\ge 3$ años) | Persona | ~17,000 / año |
-| **Módulo 05** | `Enaho01a-*-500.csv`| Empleo, Ocupación e Informalidad ($\ge 14$ años) | Persona | ~14,000 / año |
+| **Módulo 34** | `Sumaria-*.csv` | Resumen de Hogares y Target Oficial | Hogar | 4,090 (2024) / 4,129 (2025) |
+| **Módulo 01** | `Enaho01-*-100.csv`| Características de la Vivienda y Servicios Básicos | Hogar | 4,090 (2024) / 4,129 (2025) |
+| **Módulo 02** | `Enaho01-*-200.csv`| Características Demográficas de los Miembros | Persona | ~13,600 miembros / año |
+| **Módulo 03** | `Enaho01A-*-300.csv`| Educación y Capital Humano ($\ge 3$ años) | Persona | Miembros de 3 años o más |
+| **Módulo 05** | `Enaho01a-*-500.csv`| Empleo, Ocupación e Informalidad ($\ge 14$ años) | Persona | Miembros de 14 años o más |
 
-*Fuente complementaria planificada:* [Gasto presupuestal de los organismos públicos descentralizados, regionales y municipales (Datos Abiertos Perú)](https://www.datosabiertos.gob.pe/).
+*Alcance:* Lima Metropolitana tal como la define el INEI (`DOMINIO 8` = Provincia de Lima `1501` + Callao `07`), nivel de inferencia oficial de la ENAHO. Ver [`Plan 2`](Documentation/Observaciones%20a%20levantar/Plan%202/README.md).
 
 ---
 
 ## 3. Desafíos Técnicos de los Datos Urbanos y Soluciones
 
-### A. Desbalance de Clases (~17.4% Pobreza vs ~82.6% No Pobre)
-En Lima y Callao la pobreza representa aproximadamente el **17.4% de los hogares** (ratio ~1:4.7). Un modelo trivial (*dummy*) que prediga siempre "No Pobre" obtendría ~82.6% de Accuracy con Recall = 0%.
+### A. Desbalance de Clases (~18.9% Pobreza vs ~81.1% No Pobre)
+En Lima Metropolitana la pobreza afecta al **18.9% de los hogares de la muestra 2024** (17.8% en 2025; ratio ~1:4.3) y al **28.2% de las personas** (ponderado con `FACTOR07`, igual a la cifra oficial del INEI). Un modelo trivial (*dummy*) que prediga siempre "No Pobre" obtendría ~81% de Accuracy con Recall = 0%.
 - **Estrategia:** Optimización orientada a **F1-Score (clase minoritaria / macro)**, **PR-AUC (Precision-Recall AUC)**, matrices de costos, pesos de clase (`class_weight='balanced'`) y calibración de umbrales (*Threshold Tuning*).
 
 ### B. Filtro de Baja Varianza en Entorno Metropolitano (*Low Variance Filter*)
 A diferencia del ámbito rural, en Lima y Callao la luz eléctrica (`P1121`, 98.6%), la tenencia de celular (`P1142`, 97.2%) y las Necesidades Básicas Insatisfechas oficiales (`NBI1` a `NBI5`, >96% sin carencias) son cuasi-constantes. El pipeline descarta estas variables por no poseer varianza discriminante en entornos urbanos consolidados.
 
 ### C. Nulos Estructurales y Saltos de Cuestionario (*Skip Patterns*)
-- **120 nulos (2.15%) en pisos, paredes y cuartos:** Ocurrían en hogares secundarios (`HOGAR 22, 33...`) que comparten vivienda con un hogar principal (`HOGAR 11`). El procesador propaga las características físicas del inmueble dentro de la misma vivienda (`ffill()` por `conglomerado` y `vivienda`), reduciendo los nulos a **0.00%**.
+- **72 nulos (1.76%) en 2024 y 96 (2.33%) en 2025 en pisos, paredes y cuartos:** Ocurrían en hogares secundarios (`HOGAR 22, 33...`) que comparten vivienda con un hogar principal (`HOGAR 11`). El procesador propaga las características físicas del inmueble dentro de la misma vivienda (`ffill()`/`bfill()` aislado por `conglomerado` y `vivienda`), reduciendo los nulos a **0.00%**.
 - **Nulos en Título de Propiedad (32%) y SUNARP (57%):** No son datos perdidos al azar; corresponden a inquilinos y hogares con viviendas cedidas. Se consolidan en la variable categórica `seguridad_tenencia` (`propia_registrada_sunarp`, `propia_titulada_no_sunarp`, `propia_sin_titulo`, `alquilada`, `cedida_posesion_informal`).
 
 ---
@@ -104,8 +104,6 @@ Tarea Académica/
     │   └── enaho/                # Microdatos ENAHO 2024 (966-Modulo01 a 966-Modulo34)
     ├── 2025/
     │   └── enaho/                # Microdatos ENAHO 2025 (1031-Modulo01 a 1031-Modulo34)
-    ├── 2026/
-    │   └── enaho/                # Microdatos preliminares ENAHO 2026 (alerta temprana)
     ├── processed/                # Datasets limpios estandarizados (*_cleaned.csv)
     └── Fuentes.md                # Enlaces oficiales y diccionario metodológico INEI
 ```
@@ -133,7 +131,7 @@ from src.pipeline import ENAHOPipeline
 # Instanciar el pipeline
 pipe = ENAHOPipeline(data_root="Data")
 
-# Procesar Módulo 01 para 2024 y 2025 de forma conjunta (11,160 hogares)
+# Procesar Módulo 01 para 2024 y 2025 de forma conjunta (8,219 hogares de Lima Metropolitana)
 df_vivienda_consolidada = pipe.run_module(
     module_code="modulo01",
     years=[2024, 2025],
