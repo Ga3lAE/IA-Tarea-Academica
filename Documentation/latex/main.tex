@@ -20,12 +20,15 @@
 % --- TIPOGRAFÍA Y MATEMÁTICAS ---
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{booktabs}
+\usepackage{array}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \usepackage{graphicx}
 \usepackage{tikz}
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, calc, backgrounds}
 \usepackage{microtype}
 \usepackage{cite}
 \usepackage{url}
+\usepackage{xurl}
 \usepackage{hyperref}
 \hypersetup{
     colorlinks=true,
@@ -71,7 +74,7 @@
 % =========================================================================
 \twocolumn[{%
   \begin{center}
-    {\fontsize{14}{17}\selectfont\textbf{“CLASIFICACIÓN DE POBREZA EN LIMA Y CALLAO MEDIANTE APRENDIZAJE SUPERVISADO SOBRE MICRODATOS ENAHO”}}
+    {\fontsize{14}{17}\selectfont\textbf{“CLASIFICACIÓN DE LA POBREZA MONETARIA DE LOS HOGARES DE LIMA METROPOLITANA MEDIANTE APRENDIZAJE SUPERVISADO SOBRE MICRODATOS DE LA ENAHO”}}
     \par\vspace{0.7em}
     \raggedright
     {\fontsize{9}{11}\selectfont\textbf{Autores: } Gael Arias, Valeshka Lavado, Melanie Mallqui, Franco Salcedo}
@@ -80,8 +83,7 @@
 
   \begin{minipage}{\textwidth}
     \fontsize{9}{11}\selectfont
-    \textbf{Resumen}---Este trabajo aborda la identificación y clasificación de hogares en situación de pobreza monetaria en Lima Metropolitana y el Callao mediante el desarrollo de un sistema de aprendizaje supervisado aplicado a microdatos multimodulares de la Encuesta Nacional de Hogares (ENAHO 2024--2025). Ante la inobservabilidad de ingresos informales y las limitaciones de los modelos lineales tradicionales de focalización, se formula un pipeline con operadores específicos de imputación intra-predio, agregación multinivel y agrupación semántica por dominio, evaluando una jerarquía de clasificadores optimizados con funciones de pérdida sensibles al costo. El objetivo es maximizar la detección de hogares vulnerables y mitigar el error de exclusión social bajo un esquema estricto de validación temporal fuera de tiempo.
-    \par\vspace{0.5em}
+    \textbf{Resumen}---La pobreza monetaria de Lima Metropolitana se duplicó tras la pandemia y hoy concentra a cerca de un tercio de los pobres del país, mientras que buena parte de los hogares pobres no recibe apoyo de los programas sociales. Este trabajo plantea identificar a los hogares pobres sin medir su ingreso ni su gasto, mediante clasificadores supervisados entrenados con características observables de la vivienda, la composición del hogar, la educación y el empleo, tomadas de la Encuesta Nacional de Hogares. Se comparan una línea base econométrica, una regresión logística y ensambles de árboles, con aprendizaje sensible al costo, comparación de modelos a igual cobertura presupuestal, validación agrupada por conglomerado y evaluación fuera de tiempo que excluye a los hogares repetidos entre años. El objetivo es determinar si la mejora en la detección proviene de una representación más rica del hogar o de la complejidad del algoritmo, y si se mantiene de un año al siguiente.\par\vspace{0.5em}
     \centerline{\color{primarygreen}\textbf{\textit{——————————\ensuremath{\blacklozenge}——————————}}}
     \vspace{0.8em}
   \end{minipage}
@@ -93,10 +95,10 @@
 \input{../sections/01_introduccion/introduccion.tex}
 \input{../sections/02_trabajos_relacionados/trabajos_relacionados.tex}
 \input{../sections/03_metodologia/metodologia.tex}
-\input{../sections/04_experimentacion_resultados/experimentacion_resultados.tex}
-\input{../sections/05_conclusion/conclusion.tex}
-\input{../sections/06_sugerencias_futuras/sugerencias_futuras.tex}
-\input{../sections/07_implicancias_eticas/implicancias_eticas.tex}
+% Entregable final: \input{../sections/04_experimentacion_resultados/experimentacion_resultados.tex}
+% Entregable final: \input{../sections/05_conclusion/conclusion.tex}
+% Entregable final: \input{../sections/06_sugerencias_futuras/sugerencias_futuras.tex}
+% Entregable final: \input{../sections/07_implicancias_eticas/implicancias_eticas.tex}
 \input{../sections/08_link_repositorio/link_repositorio.tex}
 \input{../sections/09_declaracion_contribucion/declaracion_contribucion.tex}
 \input{../sections/10_declaracion_ia/declaracion_ia.tex}

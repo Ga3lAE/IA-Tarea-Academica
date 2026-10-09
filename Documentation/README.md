@@ -63,8 +63,8 @@ Documentation/
 ├── latex/                                    # Compilador maestro de LaTeX
 │   ├── main.tex                              # Documento raíz que ensambla todas las secciones
 │   ├── main.pdf                              # Entregable final compilado (evaluable)
-│   ├── main.bib / main.bbl                   # Base de datos de referencias bibliográficas
-│   └── pucp_logo.png                         # Logo institucional en alta resolución
+│   ├── references.bib                        # Base de datos de referencias bibliográficas (verificada)
+│   └── figures/                              # Figuras auxiliares
 │
 └── sections/                                 # Capítulos modulares del informe
     ├── 01_introduccion/
@@ -131,7 +131,7 @@ Cuando se desarrolle o corrija un punto del informe, se debe seguir estrictament
 
 | Parámetro | Entregable Parcial (Fase 1) | Entregable Final (Fase 2) |
 | :--- | :--- | :--- |
-| **Límite de Páginas** | **Máximo 4 páginas** (incluyendo referencias) | **Máximo 6 páginas** |
+| **Límite de Páginas** | **Máximo 4 páginas** (sin incluir bibliografía) | **Máximo 8 páginas** (sin incluir bibliografía) |
 | **Formato Tipográfico** | Doble columna, fuente Montserrat, interlineado sencillo | Doble columna, fuente Montserrat, interlineado sencillo |
 | **Paleta de Colores** | `#015D34` (Títulos), `#009A74` (Subtítulos), `#40B497` (Acentos) | `#015D34` (Títulos), `#009A74` (Subtítulos), `#40B497` (Acentos) |
 | **Formato de Citas** | Estilo IEEE numérico `[1]`, `[2]` | Estilo IEEE numérico `[1]`, `[2]` |

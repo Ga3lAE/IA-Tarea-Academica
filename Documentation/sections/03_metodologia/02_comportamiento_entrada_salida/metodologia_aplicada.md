@@ -1,5 +1,7 @@
 # Metodología Aplicada: Comportamiento Entrada/Salida y Diagnóstico EDA en Microdatos ENAHO
 
+> **⚠️ Nota (Plan 2, 2026-10-08):** este documento conserva textos anteriores al levantamiento de observaciones (alcance de 5,571 hogares, matriz `INGTPUHD`, hipótesis previas, atribuciones de papers sin verificar). La versión vigente es la de los archivos `.tex` y la de [`Observaciones a levantar/Plan 2`](../../../Observaciones%20a%20levantar/Plan%202/README.md).
+
 Este documento define la estructura técnica de las entradas y salidas del sistema sobre los microdatos de la **ENAHO (2024--2025)** para Lima Metropolitana y Callao, detallando los **inconvenientes empíricos identificados durante el Análisis Exploratorio de Datos (EDA Inicial)** y las salvaguardas de ingeniería para mitigarlos.
 
 ---

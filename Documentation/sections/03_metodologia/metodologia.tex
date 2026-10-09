@@ -1,178 +1,97 @@
 \section{Metodología}
 
-\subsection{Formalización del problema de aprendizaje}
+\subsection{Enfoque propuesto}
 
-El problema se formaliza bajo el marco canónico de Aprendizaje Supervisado de Tom Mitchell (1997) mediante la terna $\langle T, E, P \rangle$. La \textbf{Tarea ($T$)} corresponde a la inducción de una regla de decisión binaria $f: \mathcal{X} \to \mathcal{Y}$ que asigna a cada hogar $i$ una etiqueta $y_i \in \{0, 1\}$, donde $y_i = 1$ denota que el hogar se encuentra en situación de pobreza total (extrema o no extrema) y $y_i = 0$ corresponde a la condición de no pobreza, de acuerdo con la clasificación oficial del Módulo 34 (Sumaria) del INEI.
-
-La \textbf{Experiencia ($E$)} se define a través de un conjunto finito de entrenamiento etiquetado $\mathcal{D}_{\text{train}} = \{(\mathbf{x}_i, y_i)\}_{i=1}^{N_{\text{train}}}$, correspondiente a $N_{\text{train}} = 5,571$ hogares observados en Lima Metropolitana y Callao en la ENAHO 2024. Este dominio presenta un marcado desbalance empírico: 1,037 hogares pobres (18.61\%) frente a 4,534 hogares no pobres (81.39\%), estableciendo una razón de desbalance $\gamma \approx 4.372$ a $1$.
-
-Dada esta asimetría y el elevado costo ético de omitir a familias en vulnerabilidad, la \textbf{Medida de Desempeño ($P$)} prioriza el $F_1$-score de la clase minoritaria, el área bajo la curva Precision-Recall (PR-AUC) y la sensibilidad ($\text{Recall} \ge 0.70$). Consecuentemente, el proceso de optimización minimiza una función de pérdida logística sensible al costo (\textit{Cost-Sensitive Loss}):
+\textbf{Formalización del problema.} Siguiendo a Mitchell \cite{mitchell1997machine}, se define la terna $\langle T, E, P \rangle$. La \textbf{tarea} $T$ es inducir $f:\mathcal{X}\rightarrow\{0,1\}$ que asigne a cada hogar $i$ la etiqueta $y_i = \mathbb{I}(\texttt{POBREZA}_i \in \{1,2\})$, es decir, pobreza extrema o no extrema según el Módulo 34 (Sumaria) del INEI. La \textbf{experiencia} $E$ es la ENAHO 2024 de \texttt{DOMINIO = 8}: $N = 4{,}090$ hogares, de los cuales 774 son pobres (18.92\%), con razón de desbalance $\gamma \approx 4.28$. La prueba fuera de tiempo es la ENAHO 2025 sin los hogares panel: 3,199 hogares (17.4\% pobres). La \textbf{medida de desempeño} $P$ incluye la PR-AUC, el error de exclusión $\mathrm{EE} = FN/(TP+FN)$ y el de inclusión $\mathrm{IE} = FP/(TP+FP)$ con cobertura fija $B$, la exhaustividad, la precisión y el puntaje de Brier tras recalibrar las probabilidades. Los clasificadores minimizan una pérdida logística sensible al costo:
 \begin{equation}
-\begin{split}
-\mathcal{L}_{\text{CS}}(\theta) = &-\frac{1}{N} \sum_{i=1}^N \bigl[ c_1 y_i \log(\hat{p}_i) + c_0 (1 - y_i) \log(1 - \hat{p}_i) \bigr] \\
-&+ \lambda \Omega(\theta)
-\end{split}
+\mathcal{L}(\theta) = -\frac{1}{N}\sum_{i=1}^{N}\bigl[\alpha\, y_i \ln \hat{p}_i + (1-y_i)\ln(1-\hat{p}_i)\bigr] + \lambda\,\Omega(\theta),
 \end{equation}
-donde los ponderadores $c_1 = 4.372$ y $c_0 = 1.0$ penalizan asimétricamente el error de exclusión social (falso negativo) respecto al error de inclusión presupuestal (falso positivo).
+donde $\hat{p}_i = P(y_i = 1 \mid \mathbf{x}_i;\theta)$, $\Omega$ es la regularización y $\alpha \in \{1, 2, \gamma\}$ es un hiperparámetro elegido por validación ($\gamma$ es un cociente de frecuencias, no un costo social). Como reponderar equivale a desplazar el umbral de un modelo sin costos a $p^* = 1/(1+\alpha)$ \cite{elkan2001foundations}, no se aplican ambas correcciones a la vez.
 
-\subsection{Diagnóstico exploratorio inicial y sustento de operadores}
+\textbf{Comportamiento entrada/salida.} La entrada es $\mathbf{x}_i = [\mathbf{x}_i^{(\text{viv})}, \mathbf{x}_i^{(\text{dem})}, \mathbf{x}_i^{(\text{edu})}, \mathbf{x}_i^{(\text{emp})}]$, con unas 30 variables:
+\begin{itemize}
+    \item Vivienda (Módulo 01): materiales, habitaciones, tenencia, agua, desagüe, combustible e internet.
+    \item Demografía (Módulo 02): tamaño, menores, adultos mayores y dependencia; sexo y edad del jefe.
+    \item Educación (Módulo 03): nivel del jefe y máximo del hogar.
+    \item Empleo (Módulo 05): ocupados, categoría ocupacional, horas y afiliación a pensión del jefe.
+\end{itemize}
+Ninguna variable de ingreso o gasto entra en $\mathbf{x}_i$; el gasto solo es la variable dependiente de la línea base. La salida es un puntaje por hogar ($\hat{p}_i$, o el gasto predicho con signo invertido en la línea base). La decisión selecciona al 20\% de hogares con mayor puntaje, que es la comparación principal, o usa un umbral $\tau$ fijado en la validación de 2024 y congelado para 2025 (H3).
 
-Para fundamentar rigurosamente el diseño del pipeline y evitar transformaciones arbitrarias, el Análisis Exploratorio de Datos (EDA) inicial identificó tres patologías estructurales en los microdatos:
+\textbf{Operadores y adaptaciones al problema.} La Figura~\ref{fig:pipeline} muestra el flujo y la Tabla~\ref{tab:adaptaciones} su sustento en la literatura.
+\begin{enumerate}
+    \item \textit{Imputación intra-vivienda.} En 2024, 72 hogares secundarios (1.76\%) que comparten vivienda con el hogar principal no tienen datos físicos (paredes, pisos, habitaciones). Los heredan de su vivienda $(\texttt{CONGLOME}, \texttt{VIVIENDA})$ mediante relleno hacia adelante y atrás restringido a cada grupo, sin imputar valores globales.
+    \item \textit{Agregación individuo$\rightarrow$hogar.} Un operador $\Phi$ toma las personas $j$ del hogar $i$ y produce dos ramas: los atributos del jefe ($P203 = 1$) y funcionales del hogar, por ejemplo $\text{dep}_i = \sum_j \mathbb{I}(e_j<15 \lor e_j \ge 65) / \max\bigl(1, \sum_j \mathbb{I}(15 \le e_j < 65)\bigr)$, donde $e_j$ es la edad de la persona $j$. Se agregan el máximo nivel educativo, la proporción de ocupados y las personas por habitación.
+    \item \textit{Agrupación de categorías raras ajustada solo en entrenamiento.} Las categorías con menos de 1\% se fusionan por afinidad. En pisos (2024): acabado noble 49.8\% de los hogares (pobreza 8.2\%), cemento 46.0\% (28.9\%) y precario 4.2\% (37.2\%). Las tasas se calculan solo con 2024 para evitar fuga de la etiqueta.
+    \item \textit{Línea base econométrica.} PMT por mínimos cuadrados: $\ln(\text{gasto}_i) = \mathbf{w}^{\top}\mathbf{x}_i + \varepsilon_i$, con $\hat{y}_i = \mathbb{I}\bigl(\widehat{\ln \text{gasto}_i} < \ln \text{LINEA}\bigr)$. Se compara con una regresión logística ElasticNet, un \textit{random forest} y LightGBM \cite{ke2017lightgbm}, cuyos hiperparámetros se eligen por validación agrupada.
+    \item \textit{Comparación a igual cobertura.} Todos los modelos seleccionan la misma proporción $B = 20$\% de hogares, y se trazan curvas exclusión-inclusión para $B$ entre 10\% y 40\%. Así se aísla el aporte del modelo de la elección del umbral.
+    \item \textit{Protocolo contra la fuga de información.} (a) Se excluyen del test los 930 hogares de 2025 que también fueron encuestados en 2024. (b) La validación interna usa \texttt{GroupKFold} de 5 particiones por conglomerado, porque 702 de los 704 conglomerados se repiten entre años. (c) Codificación, escalamiento y agrupación de categorías se ajustan dentro de un \texttt{Pipeline} solo con datos de entrenamiento.
+    \item \textit{Inferencia.} Las diferencias entre modelos (H1, H2, H4) se estiman con intervalos de confianza por \textit{bootstrap} de conglomerados (1,000 réplicas), en lugar de la prueba de McNemar, que no compara PR-AUC ni F1.
+    \item \textit{Interpretabilidad.} TreeSHAP \cite{lundberg2020local} descompone el puntaje de cada hogar en contribuciones aditivas, $f(\mathbf{x}_i) = \phi_0 + \sum_{j=1}^{d}\phi_j(\mathbf{x}_i)$. Así se verifica que las variables más influyentes sean coherentes con la literatura y se detecta cualquier variable que filtre información del gasto.
+\end{enumerate}
+Un chequeo preliminar con 28 variables, cuyo script está en el repositorio, dio $\mathrm{EE} \approx 0.41$ con $B = 20$\% para la línea base, la regresión logística y el \textit{random forest}. Esto motiva formular H2 como una prueba de equivalencia. Las métricas se reportan por hogar y, como robustez, ponderadas por personas (\texttt{FACTOR07} $\times$ miembros).
 
-En primer lugar, se detectó que el 2.15\% de las familias corresponden a hogares secundarios (\texttt{HOGAR 22, 33...}) que cohabitan en un mismo predio físico y cuyos materiales no son re-encuestados por omisión de diseño del INEI. Este hallazgo empírico justifica el diseño de un operador de propagación intra-predio en lugar de eliminar observaciones o imputar medias globales.
-
-En segundo lugar, se comprobó una severa discrepancia de granularidad relacional: mientras el hábitat se registra por hogar, los módulos de demografía, educación y empleo contienen 19,420 individuos con roles asimétricos (el 57.3\% de jefes de hogar labora en la informalidad), lo que exige desacoplar las variables del sostén principal de los funcionales agregados de carga familiar.
-
-En tercer lugar, como evidencia la Figura \ref{fig:domain_binning}, variables categóricas como material de pisos (\texttt{P103}) exhiben colas largas con frecuencias menores al 0.8\% (mármol 0.2\%, caña 0.5\%, madera rústica 0.8\%). Una codificación ciega por \textit{One-Hot Encoding} induciría hiperdispersión y sobreajuste. Al consolidar estas categorías en tres estratos semánticos (noble acabado, cemento básico y precario), se comprueba una relación monótona creciente con la tasa empírica de pobreza (7.1\%, 24.3\% y 37.0\%), fundamentando el operador \texttt{DomainBinner}.
-
-En cuarto lugar, dado el predominio de variables cualitativas, la correlación de Pearson resulta inaplicable por asumir relaciones lineales continuas. El diagnóstico analiza la redundancia entre covariables mediante la $V$ de Cramér ($V \in [0, 1]$) podando pares con $V > 0.80$, y evalúa la capacidad discriminante no lineal respecto al target mediante Información Mutua $I(X; Y)$. Bajo este criterio, se descartó una reducción factorial continua densa (PCA o FAMD) debido a que rotar el espacio tabular diluye las señales discretas requeridas por las particiones ortogonales de los árboles y elimina la explicabilidad univariada de políticas públicas (TreeSHAP). En su lugar, la reducción de dimensionalidad se formula como una selección curada en tres etapas que comprime las $>400$ variables originales a un vector óptimo e interpretable de $d \approx 20$ dimensiones.
+\begin{table}[htbp]
+\centering
+\caption{Adaptaciones del enfoque y publicación que las sustenta.}
+\label{tab:adaptaciones}
+\fontsize{6.8}{8.2}\selectfont
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{L{2.5cm}L{3.1cm}L{1.4cm}}
+\toprule
+\textbf{Adaptación} & \textbf{Cómo se aplica} & \textbf{Sustento} \\
+\midrule
+Línea base PMT-MCO & $\ln(\text{gasto})$ con corte en la línea & \cite{brown2018poor,mcbride2018retooling} \\
+\addlinespace[2pt]
+Pérdida sensible al costo & $\alpha$ como hiperparámetro; sin doble corrección del umbral & \cite{elkan2001foundations} \\
+\addlinespace[2pt]
+Igual cobertura y curva EE-IE & Selección de 20\% de hogares & \cite{noriega2020algorithmic} \\
+\addlinespace[2pt]
+Prueba fuera de tiempo sin panel & Entrenar 2024, evaluar 2025 sin 930 hogares & \cite{aiken2023moving} \\
+\addlinespace[2pt]
+Validación agrupada & \texttt{GroupKFold} por conglomerado & \cite{roberts2017cross} \\
+\addlinespace[2pt]
+Ensambles de árboles & \textit{Random forest} y LightGBM & \cite{grinsztajn2022tree,ke2017lightgbm} \\
+\addlinespace[2pt]
+Interpretabilidad & TreeSHAP por hogar & \cite{lundberg2020local} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
-    font=\fontsize{6.2}{7.5}\selectfont,
-    bar/.style={rectangle, draw=primarygreen!80, fill=primarygreen!25, line width=0.5pt, minimum height=5.5pt, inner sep=0pt},
-    barcola/.style={rectangle, draw=red!80, fill=red!20, line width=0.5pt, minimum height=5.5pt, inner sep=0pt},
-    barbin/.style={rectangle, draw=secondaryteal!80, fill=secondaryteal!30, line width=0.5pt, minimum height=6.0pt, inner sep=0pt}
-]
-
-% Panel A: Dispersión original
-\node[anchor=west] at (0, 3.1) {\textbf{\color{primarygreen}(a) Frecuencias INEI en Pisos (P103)}};
-
-\node[anchor=east] at (1.9, 2.7) {Cemento:};
-\node[bar, anchor=west, minimum width=2.4cm] at (2.0, 2.7) {};
-\node[anchor=west] at (4.5, 2.7) {68.2\%};
-
-\node[anchor=east] at (1.9, 2.3) {Loseta/Cerám.:};
-\node[bar, anchor=west, minimum width=0.7cm] at (2.0, 2.3) {};
-\node[anchor=west] at (2.8, 2.3) {19.4\%};
-
-\node[anchor=east] at (1.9, 1.9) {Parquet:};
-\node[bar, anchor=west, minimum width=0.3cm] at (2.0, 1.9) {};
-\node[anchor=west] at (2.4, 1.9) {7.1\%};
-
-\node[anchor=east] at (1.9, 1.5) {Tierra:};
-\node[bar, anchor=west, minimum width=0.15cm] at (2.0, 1.5) {};
-\node[anchor=west] at (2.25, 1.5) {3.8\%};
-
-\node[anchor=east] at (1.9, 1.1) {Madera rúst.:};
-\node[barcola, anchor=west, minimum width=0.08cm] at (2.0, 1.1) {};
-\node[anchor=west] at (2.15, 1.1) {\color{red}0.8\%};
-
-\node[anchor=east] at (1.9, 0.7) {Caña/Estera:};
-\node[barcola, anchor=west, minimum width=0.06cm] at (2.0, 0.7) {};
-\node[anchor=west] at (2.15, 0.7) {\color{red}0.5\%};
-
-\node[anchor=east] at (1.9, 0.3) {Mármol/Porc.:};
-\node[barcola, anchor=west, minimum width=0.04cm] at (2.0, 0.3) {};
-\node[anchor=west] at (2.15, 0.3) {\color{red}0.2\%};
-
-\draw[draw=red!70, dashed, rounded corners=2pt] (0.1, 0.15) rectangle (5.2, 1.25);
-\node[anchor=west, text=red!80] at (2.6, 0.7) {\textbf{Colas $<1\%$ (One-Hot disperso)}};
-
-% Separador
-\draw[draw=gray!30, line width=0.5pt] (0, 0.0) -- (6.8, 0.0);
-
-% Panel B: Estratos DomainBinner vs Tasa Pobreza
-\node[anchor=west] at (0, -0.3) {\textbf{\color{secondaryteal}(b) Estratos DomainBinner vs. Tasa de Pobreza}};
-
-\node[anchor=east] at (2.1, -0.7) {Noble Acabado:};
-\node[barbin, anchor=west, minimum width=0.55cm] at (2.2, -0.7) {};
-\node[anchor=west] at (2.85, -0.7) {\textbf{7.1\% pobreza}};
-
-\node[anchor=east] at (2.1, -1.05) {Cemento Básico:};
-\node[barbin, anchor=west, minimum width=1.65cm] at (2.2, -1.05) {};
-\node[anchor=west] at (3.95, -1.05) {\textbf{24.3\% pobreza}};
-
-\node[anchor=east] at (2.1, -1.4) {Precario/Tierra:};
-\node[barbin, anchor=west, minimum width=2.45cm] at (2.2, -1.4) {};
-\node[anchor=west] at (4.75, -1.4) {\textbf{37.0\% pobreza}};
-
-\draw[-{Stealth[length=3pt]}, line width=0.7pt, draw=secondaryteal] (6.0, -1.4) -- (6.0, -0.7) node[midway, right=1pt, text=secondaryteal] {\textbf{Monotonía}};
-
-\end{tikzpicture}
-\caption{\textbf{Diagnóstico EDA Inicial y Justificación de Agrupación Semántica.} (a) Distribución hiperdispersa en categorías oficiales del INEI. (b) Estratos consolidados que revelan monotonía creciente con la pobreza monetaria.}
-\label{fig:domain_binning}
-\end{figure}
-
-\subsection{Espacio de entrada, salida y política de cero fuga}
-
-La unidad muestral de análisis e inferencia es el hogar urbano, identificado por la clave compuesta $(\texttt{CONGLOME}, \texttt{VIVIENDA}, \texttt{HOGAR})$. El espacio de entrada $\mathcal{X} \subset \mathbb{R}^d$ se estructura mediante la concatenación de cuatro subvectores modulares $\mathbf{x}_i = [\mathbf{x}_i^{(\text{viv})}, \mathbf{x}_i^{(\text{dem})}, \mathbf{x}_i^{(\text{educ})}, \mathbf{x}_i^{(\text{emp})}]^T$: el subvector de vivienda (Módulo 01) captura materiales físicos, abastecimiento de agua por red pública, saneamiento y hacinamiento; el subvector demográfico (Módulo 02) sintetiza el tamaño del hogar, presencia de infantes y tasas de dependencia etaria; el subvector de educación (Módulo 03) registra los años de escolaridad y máximo nivel educativo familiar; y el subvector laboral (Módulo 05) modela la condición de informalidad, tenencia de pensión y tasa de ocupación.
-
-Bajo un estricto principio de aislamiento (\textit{Zero Data Leakage}), toda variable financiera de ingresos, gastos brutos y líneas de corte monetario de Sumaria queda excluida del espacio $\mathcal{X}$. El espacio de salida opera en dos etapas: primero, el modelo genera una estimación probabilística continua $\hat{p}_i = P(y_i = 1 \mid \mathbf{x}_i) \in [0, 1]$; posteriormente, se aplica una regla de decisión $\hat{y}_i = \mathbb{I}(\hat{p}_i \ge \tau^*)$, donde el umbral operativo $\tau^* \approx 0.30$ se calibra empíricamente en validación interna para maximizar el $F_1$-score sujeto a garantizar una cobertura de pobreza $\text{Recall} \ge 0.70$.
-
-\subsection{Operadores de ingeniería y clasificadores adaptados}
-
-A partir de los hallazgos del EDA inicial se implementaron los siguientes operadores modulares:
-
-En primer término, el operador \texttt{HousingCohortImputer} propaga los materiales del hogar principal a hogares secundarios mediante \texttt{ffill().bfill()} sobre la clave $(\texttt{CONGLOME}, \texttt{VIVIENDA})$, resolviendo el 100\% de los nulos de cohabitación sin inventar registros sintéticos.
-
-En segundo término, el operador relacional $\Phi(\cdot)$ (\texttt{HouseholdAggregator}) colapsa la tabla de personas ($1:M$) bifurcando el flujo: extrae los atributos directos del jefe ($P203 = 1$) y computa funcionales estadísticos colectivos (tasa de dependencia etaria, máximo nivel educativo y porcentaje de ocupados).
-
-En tercer término, el operador \texttt{DomainBinner} proyecta las variables de alta dispersión sobre los estratos semánticos monótonos validados en el diagnóstico exploratorio.
-
-Finalmente, la jerarquía de modelos evaluados comprende: una Regresión Logística ElasticNet ($L_1/L_2$) como referencia lineal; un Árbol de Decisión CART con poda por costo-complejidad; un ensamble Random Forest con reducción de varianza; y un clasificador LightGBM con crecimiento por hojas (\textit{leaf-wise}) y ponderación directa de gradientes (\texttt{scale\_pos\_weight = 4.372}), adaptado para inducir fronteras de decisión no lineales ante la informalidad metropolitana.
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[
-    basebox/.style={
-        rectangle, 
-        rounded corners=2.5pt, 
-        line width=0.7pt, 
-        inner sep=3.5pt, 
-        font=\fontsize{6.8}{8.0}\selectfont, 
-        align=left, 
-        text width=0.92\columnwidth
-    },
+    basebox/.style={rectangle, rounded corners=2.5pt, line width=0.7pt, inner sep=3pt,
+        font=\fontsize{6.6}{7.9}\selectfont, align=left, text width=0.92\columnwidth},
     boxgray/.style={basebox, draw=gray!70, fill=black!4},
     boxgreen/.style={basebox, draw=primarygreen, fill=primarygreen!7},
     boxteal/.style={basebox, draw=secondaryteal, fill=secondaryteal!7},
-    arrow/.style={
-        -{Stealth[length=4pt, width=3pt]}, 
-        line width=0.8pt, 
-        draw=primarygreen
-    }
+    arrow/.style={-{Stealth[length=4pt, width=3pt]}, line width=0.8pt, draw=primarygreen}
 ]
-
-% Node 1: Ingesta
 \node[boxgray] (ingesta) {
-    \textbf{\color{primarygreen}1. Ingesta Multimodular ENAHO (INEI 2024--2025)}\\
-    $\bullet$ Mód. 01: Vivienda (materiales, agua, saneamiento) [Hogar]\\
-    $\bullet$ Mód. 02, 03, 05: Demografía, educación y empleo [Persona]\\
-    $\bullet$ Mód. 34: Sumaria $\to$ Etiqueta binaria $y_i \in \{0, 1\}$
+    \textbf{\color{primarygreen}1. Datos: ENAHO 2024--2025, \texttt{DOMINIO = 8}}\\
+    $\bullet$ Hogar: Módulo 01 (vivienda) y Módulo 34 (etiqueta $y_i$).\\
+    $\bullet$ Persona: Módulos 02, 03 y 05 (demografía, educación, empleo).
 };
-
-% Node 2: Operadores
-\node[boxgreen, below=4pt of ingesta] (operadores) {
-    \textbf{\color{primarygreen}2. Operadores de Ingeniería y Reducción Curada}\\
-    $\bullet$ \texttt{HousingCohortImputer}: Imputación intra-predio (\texttt{ffill/bfill}).\\
-    $\bullet$ \texttt{HouseholdAggregator} $\Phi(\cdot)$: Rama Jefe ($P203=1$) y núcleo familiar.\\
-    $\bullet$ \texttt{DomainBinner} y Curaduría ($d \approx 20$): Poda $V > 0.80$ e $I(X; Y)$.\\
-    $\bullet$ \textbf{Cortafuegos Cero Fuga}: Aislamiento total de ingresos y gastos.
+\node[boxgreen, below=4pt of ingesta] (preproc) {
+    \textbf{\color{primarygreen}2. Representación del hogar (sin ingreso ni gasto)}\\
+    $\bullet$ Imputación intra-vivienda; agregación $\Phi$ (jefe y hogar).\\
+    $\bullet$ Agrupación de categorías raras ajustada solo con 2024.
 };
-
-% Node 3: Modelado
-\node[boxteal, below=4pt of operadores] (modelado) {
-    \textbf{\color{secondaryteal}3. Espacio Vectorial y Modelado Supervisado}\\
-    $\bullet$ Vector: $\mathbf{x}_i \in \mathbb{R}^d$ ($N = 5,571$ hogares, desbalance 1:4.37).\\
-    $\bullet$ Modelos: Regresión Logística $\to$ CART $\to$ Random Forest $\to$ LightGBM (\textit{Cost-Sensitive}, \texttt{scale\_pos\_weight = 4.372}).
+\node[boxteal, below=4pt of preproc] (modelado) {
+    \textbf{\color{secondaryteal}3. Modelos}\\
+    $\bullet$ Línea base PMT-MCO sobre $\ln(\text{gasto})$; logística ElasticNet.\\
+    $\bullet$ \textit{Random forest} y LightGBM con pérdida sensible al costo ($\alpha$).
 };
-
-% Node 4: Inferencia
-\node[boxgray, below=4pt of modelado] (inferencia) {
-    \textbf{\color{primarygreen}4. Inferencia y Validación Fuera de Tiempo}\\
-    $\bullet$ Probabilidad continua: $\hat{p}_i = P(y_i=1 \mid \mathbf{x}_i) \in [0, 1]$.\\
-    $\bullet$ Regla de decisión: $\hat{y}_i = \mathbb{I}(\hat{p}_i \ge \tau^*)$ con $\tau^* \approx 0.30$ ($\text{Recall} \ge 70\%$).\\
-    $\bullet$ Validación \textit{Out-of-Time}: Train 2024 $\to$ Blind Test 2025.
+\node[boxgray, below=4pt of modelado] (validacion) {
+    \textbf{\color{primarygreen}4. Validación y evaluación}\\
+    $\bullet$ 2024: \texttt{GroupKFold} por conglomerado (hiperparámetros, $\alpha$, $\tau$).\\
+    $\bullet$ 2025 sin 930 hogares panel: PR-AUC, EE e IE con $B = 20$\%,\\
+    \hphantom{$\bullet$ }curvas exclusión-inclusión e IC por \textit{bootstrap}.
 };
-
-% Arrows
-\draw[arrow] (ingesta) -- (operadores);
-\draw[arrow] (operadores) -- (modelado);
-\draw[arrow] (modelado) -- (inferencia);
-
+\draw[arrow] (ingesta) -- (preproc);
+\draw[arrow] (preproc) -- (modelado);
+\draw[arrow] (modelado) -- (validacion);
 \end{tikzpicture}
-\caption{\textbf{Arquitectura del Pipeline de Clasificación Supervisada de Pobreza Urbana.} Flujo secuencial modular desde la ingesta de encuestas hasta la evaluación temporal fuera de tiempo, integrando operadores específicos para mitigar las fricciones empíricas detectadas en el EDA inicial.}
+\caption{Flujo metodológico. $y_i$: pobreza oficial del hogar; $\Phi$: agregación de personas a hogar; $\alpha$: peso de la clase pobre en la pérdida; $\tau$: umbral de decisión; $B$: proporción de hogares seleccionados; EE e IE: errores de exclusión e inclusión.}
 \label{fig:pipeline}
 \end{figure}

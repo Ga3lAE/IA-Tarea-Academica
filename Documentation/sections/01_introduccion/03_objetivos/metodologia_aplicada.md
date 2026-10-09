@@ -1,5 +1,7 @@
 # Metodología Aplicada: Formulación de Objetivos del Proyecto
 
+> **⚠️ Nota (Plan 2, 2026-10-08):** este documento conserva textos anteriores al levantamiento de observaciones (alcance de 5,571 hogares, matriz `INGTPUHD`, hipótesis previas, atribuciones de papers sin verificar). La versión vigente es la de los archivos `.tex` y la de [`Observaciones a levantar/Plan 2`](../../../Observaciones%20a%20levantar/Plan%202/README.md).
+
 Este documento aterriza los marcos metodológicos abstractos (SMART, Taxonomía de Bloom, Coherencia Espejo del Marco Lógico y CRISP-DM) al proyecto de **clasificación supervisada de pobreza urbana en Lima Metropolitana y Callao utilizando microdatos de la ENAHO**, adaptado a la **rúbrica y alcance del curso de Inteligencia Artificial (1INF24 - PUCP)**.
 
 ---

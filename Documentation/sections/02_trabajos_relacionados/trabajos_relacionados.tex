@@ -1,9 +1,34 @@
 \section{Trabajos relacionados}
 
-La literatura científica sobre focalización socioeconómica y aprendizaje automático ofrece fundamentos empíricos y algorítmicos determinantes para este estudio. En primer lugar, en el ámbito de la focalización y reducción del error de exclusión, Aiken et al. \cite{aiken2022machine} demostraron en \textit{Nature} que el aprendizaje supervisado sobre proxies observables no monetarios reduce la tasa de error de exclusión en transferencias sociales entre un 4\% y un 21\% frente a los padrones gubernamentales estáticos durante crisis humanitarias. Este hallazgo valida la sustitución de registros administrativos lentos por modelos de inferencia basados en privaciones tangibles.
+McBride y Nichols \cite{mcbride2018retooling} replicaron las herramientas PMT de USAID con encuestas de Bolivia, Timor-Leste y Malawi, y compararon modelos lineales elegidos por validación cruzada con \textit{random forest} y \textit{quantile regression forest}. La selección fuera de muestra mejoró el criterio balanceado de exactitud de pobreza (BPAC) entre 2.7\% y 17.5\% y redujo la subcobertura; además, el modelo paramétrico bien validado rindió igual o mejor que los ensambles. Como limitación, sus particiones aleatorias ignoran el diseño muestral y, según los propios autores, el método funciona fuera de muestra pero no fuera de población. Adoptamos su selección de modelos por validación y un comparador lineal fuerte.
 
-En segundo lugar, respecto al sesgo inductivo y la selección de arquitecturas tabulares, Grinsztajn et al. \cite{grinsztajn2022tree} probaron empíricamente en NeurIPS sobre 45 conjuntos de datos que los modelos basados en árboles (CART, Random Forest y Gradient Boosting) superan sistemáticamente a las arquitecturas de Deep Learning en datos tabulares heterogéneos. La naturaleza escalonada de las funciones de decisión y la invarianza a transformaciones monótonas justifican el uso preferente de ensambles arbóreos para procesar encuestas de hogares.
+Brown, Ravallion y van de Walle \cite{brown2018poor} evaluaron el PMT econométrico en nueve países africanos: con una pobreza de 20\%, el PMT por mínimos cuadrados excluye en promedio al 81\% de los pobres, y los estimadores centrados en la pobreza reducen esa exclusión a costa de más inclusión. No evalúan aprendizaje automático y su contexto es mayormente rural. Adoptamos el PMT sobre $\ln(\text{gasto})$ como línea base y la prioridad del error de exclusión.
 
-En tercer lugar, en cuanto al fallo estructural de las fórmulas convencionales de Proxy Means Testing (PMT), McBride \& Nichols \cite{mcbride2018retooling} evidenciaron en \textit{The World Bank Economic Review} que las aproximaciones basadas en regresión lineal (MCO) sufren de sobreajuste severo y se degradan drásticamente fuera de muestra. Sus experimentos comprobaron que los modelos no lineales reducen la exclusión social entre un 10\% y un 18\%, al capturar interacciones multidimensionales de privación que los supuestos aditivos lineales ignoran.
+Noriega-Campero et al. \cite{noriega2020algorithmic} reportan que la focalización con aprendizaje automático habría cubierto a casi un millón de pobres más en dos países sin elevar el gasto, aunque produce disparidades entre subgrupos si no se restringe. En su versión preliminar \cite{noriega2018fairness}, el \textit{gradient boosting} fue el mejor modelo, el umbral sobre el puntaje define una curva exclusión-inclusión y los pobres urbanos de Ecuador resultaron 2.3 veces más excluidos que los rurales. Evalúan con una sola partición aleatoria y sin validación temporal. Adoptamos la comparación a igual cobertura y la auditoría por subgrupos.
 
-Finalmente, en relación con la estabilidad temporal de los modelos, el estudio conjunto del Banco Mundial y EAAMO \cite{eaamo2023moving} demostró que los clasificadores de pobreza sufren una degradación sistemática por desplazamiento de distribución (\textit{data drift}) ante fluctuaciones macroeconómicas. Los autores concluyeron que la validación cruzada aleatoria convencional sobrestima el rendimiento debido a la fuga temporal, exigiendo un protocolo riguroso de evaluación fuera de tiempo (\textit{train} en $t$ y \textit{test} ciego en $t+1$).
+Aiken, Ohlenburg y Blumenstock \cite{aiken2023moving} analizaron diez años de encuestas de cuatro países africanos: los errores de un PMT aumentan 1.7 puntos porcentuales por año sin actualización, sobre todo por el cambio en las características de los hogares. Su evidencia proviene de PMT lineales en contextos no urbanos. Adoptamos la evaluación fuera de tiempo 2024$\rightarrow$2025.
+
+Como apoyo, Aiken et al. \cite{aiken2022machine} muestran que, con datos de telefonía, la exclusión baja entre 4\% y 21\% frente a la focalización geográfica pero sube entre 9\% y 35\% frente a un PMT con registro social, lo que respalda usar datos de encuesta; y Grinsztajn et al. \cite{grinsztajn2022tree} muestran que los árboles son el estado del arte en tablas de tamaño medio. La Tabla~\ref{tab:papers} resume la comparación.
+
+\textbf{Brecha de investigación.} Los estudios revisados provienen de contextos mayormente rurales o de países africanos. Miden la estabilidad temporal solo con PMT lineales y no examinan en conjunto el desbalance de clases, la comparación a igual cobertura y la evaluación fuera de tiempo. Por su parte, los enfoques con datos de telefonía dependen de registros privados de difícil acceso para el Estado. No encontramos evaluaciones de este tipo para la pobreza urbana de Lima Metropolitana posterior a la pandemia con microdatos públicos de la ENAHO: ese es el vacío que aborda este trabajo.
+
+\begin{table*}[t]
+\centering
+\caption{Publicaciones evaluadas: datos, método, hallazgo principal, limitación y decisión que adopta el proyecto.}
+\label{tab:papers}
+\fontsize{7}{8.4}\selectfont
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{L{2.3cm}L{2.5cm}L{2.9cm}L{3.0cm}L{2.8cm}L{2.9cm}}
+\toprule
+\textbf{Estudio} & \textbf{Datos} & \textbf{Método} & \textbf{Hallazgo principal} & \textbf{Limitación} & \textbf{Adopción en el proyecto} \\
+\midrule
+McBride y Nichols (2018) \cite{mcbride2018retooling} & Encuestas de Bolivia, Timor-Leste y Malawi (1,800--11,280 hogares) & MCO y regresión cuantílica con validación cruzada; RF y QRF & BPAC +2.7\% a +17.5\%; el lineal bien validado rinde como los ensambles & Partición aleatoria sin diseño muestral; variables preseleccionadas & Selección por validación; comparador lineal fuerte \\
+\addlinespace[2pt]
+Brown et al. (2018) \cite{brown2018poor} & Encuestas nacionales de 9 países africanos & PMT por MCO frente a estimadores centrados en la pobreza & Con pobreza de 20\%, el PMT excluye al 81\% de los pobres & Sin aprendizaje automático; contexto mayormente rural & Línea base PMT-MCO; prioridad del error de exclusión \\
+\addlinespace[2pt]
+Noriega-Campero et al. (2020) \cite{noriega2020algorithmic,noriega2018fairness} & Encuestas de México, Ecuador y Costa Rica; dos países (2020) & \textit{Gradient boosting}; curva exclusión-inclusión; umbrales por grupo & Casi un millón de pobres más cubiertos; pobres urbanos 2.3 veces más excluidos & Una sola partición aleatoria; sin validación temporal & Comparación a igual cobertura; auditoría por subgrupos \\
+\addlinespace[2pt]
+Aiken et al. (2023) \cite{aiken2023moving} & 10 años de encuestas de 4 países africanos & Entrenar en $t$ y evaluar en $t+k$ & +1.7 p.p. de error por año sin actualizar & PMT lineales; contextos no urbanos & Prueba fuera de tiempo 2024$\rightarrow$2025 \\
+\bottomrule
+\end{tabular}
+\end{table*}
