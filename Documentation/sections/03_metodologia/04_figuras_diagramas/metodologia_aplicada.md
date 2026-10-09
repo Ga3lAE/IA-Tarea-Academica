@@ -1,7 +1,5 @@
 # Metodología Aplicada: Catálogo y Trazabilidad de Figuras del Pipeline de Pobreza
 
-> **⚠️ Nota (Plan 2, 2026-10-08):** este documento conserva textos anteriores al levantamiento de observaciones (alcance de 5,571 hogares, matriz `INGTPUHD`, hipótesis previas, atribuciones de papers sin verificar). La versión vigente es la de los archivos `.tex` y la de [`Observaciones a levantar/Plan 2`](../../../Observaciones%20a%20levantar/Plan%202/README.md).
-
 Este documento define el catálogo formal de figuras y diagramas técnicos desarrollados para respaldar la **Sección 3: Metodología** sobre los microdatos de la **ENAHO (2024--2025)** en Lima Metropolitana y Callao. Establece la trazabilidad exacta de cada figura: a qué directriz de la plantilla responde, qué inconveniente de los datos aborda y cómo aporta al cumplimiento de la rúbrica del curso (1INF24).
 
 ---

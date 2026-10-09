@@ -1,7 +1,5 @@
 # Metodología Aplicada: Benchmark y Selección de Literatura Científica
 
-> **⚠️ Nota (Plan 2, 2026-10-08):** este documento conserva textos anteriores al levantamiento de observaciones (alcance de 5,571 hogares, matriz `INGTPUHD`, hipótesis previas, atribuciones de papers sin verificar). La versión vigente es la de los archivos `.tex` y la de [`Observaciones a levantar/Plan 2`](../../Observaciones%20a%20levantar/Plan%202/README.md).
-
 Este documento aplica los marcos metodológicos abstractos (protocolo de revisión sistemática, tipología de fuentes, matriz de contribución dual y principio de parsimonia) al proyecto de **clasificación de pobreza en Lima Metropolitana y Callao con la ENAHO**, adaptado a los requerimientos del curso de **Inteligencia Artificial (1INF24 - PUCP)**.
 
 ---

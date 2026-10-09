@@ -35,7 +35,7 @@ Los datos provienen de la **ENAHO con Metodología Actualizada** del INEI para l
 | **Módulo 03** | `Enaho01A-*-300.csv`| Educación y Capital Humano ($\ge 3$ años) | Persona | Miembros de 3 años o más |
 | **Módulo 05** | `Enaho01a-*-500.csv`| Empleo, Ocupación e Informalidad ($\ge 14$ años) | Persona | Miembros de 14 años o más |
 
-*Alcance:* Lima Metropolitana tal como la define el INEI (`DOMINIO 8` = Provincia de Lima `1501` + Callao `07`), nivel de inferencia oficial de la ENAHO. Ver [`Plan 2`](Documentation/Observaciones%20a%20levantar/Plan%202/README.md).
+*Alcance:* Lima Metropolitana tal como la define el INEI (`DOMINIO 8` = Provincia de Lima `1501` + Callao `07`), nivel de inferencia oficial de la ENAHO. Ver [`log_cambios_2026-10-08_21-04.md`](Documentation/Observaciones%20a%20levantar/log_cambios_2026-10-08_21-04.md).
 
 ---
 

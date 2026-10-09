@@ -44,26 +44,8 @@ flowchart TD
 
 | Iteración | Timestamp | Estado | Calificación Proyectada | Alcance Principal |
 | :---: | :---: | :---: | :---: | :--- |
-| **Plan 2** | **[`2026-10-08_20-30` · `Plan 2/`](./Plan%202/README.md)** | **IMPLEMENTADO** | 19 – 20 / 20 | Auditoría del plan v1 con verificación contra fuentes y microdatos; implementado en `src/` y en el informe. Incluye el PDF del parcial (`Plan 2/GrupoX-TA-Parcial.pdf`), los scripts que reproducen sus cifras e integra los aportes válidos de la Ronda 2. |
 | **Ronda 2** | **[`2026-10-08_20-30`](#3-iteración-activa-auditoría-2026-10-08_20-30-meta-1820--20)** | **ACTIVA** | **19.0 – 20.0 / 20** | Saneamiento decimal (`4.372`), corrección de citas falsas (Aiken COMPASS '23, McBride WBER '18), 3 papers de método (Elkan, Ke, Lundberg), marco normativo SISFOH (Directiva MIDIS), párrafo de brecha de investigación y tono científico. |
 | **Ronda 1** | **[`2026-10-08_20-03`](#4-iteración-histórica-auditoría-2026-10-08_20-03)** | Archivada | 15.0 – 16.0 / 20 | Delimitación estricta a `DOMINIO == 8`, purga de 930 hogares panel repetidos, corrección de bugs en pipeline ENAHO (`.transform()`, diccionarios P110/P113A) y script de factibilidad empírica. |
-
----
-
-## Plan 2 (implementado): [`Plan 2/`](./Plan%202/README.md)
-
-Versión **implementada** del levantamiento. El código (`src/`, `Data/processed/`), el informe (`Documentation/latex` y `sections`) y el PDF del entregable parcial ya reflejan este plan.
-
-| Archivo | Contenido |
-| :--- | :--- |
-| [`Plan 2/README.md`](./Plan%202/README.md) | Qué se implementó, cómo reproducir cifras y PDF, verificación contra la rúbrica y pendientes |
-| [`Plan 2/GrupoX-TA-Parcial.pdf`](./Plan%202/GrupoX-TA-Parcial.pdf) | Entregable parcial compilado (cuerpo ≈ 3.5 págs., 14 referencias verificadas) |
-| [`Plan 2/problemas_2026-10-08_20-30.md`](./Plan%202/problemas_2026-10-08_20-30.md) | Auditoría del plan v1 (E-01…E-15, G-01…G-07) y **§6: erratas de la Ronda 2** (R2-01…R2-10) |
-| [`Plan 2/metodologia_2026-10-08_20-30.md`](./Plan%202/metodologia_2026-10-08_20-30.md) | Cifras verificadas, fichas de papers, H1–H4 (H2 como equivalencia), regla de decisión y presupuesto de páginas |
-| [`Plan 2/concretizacion_2026-10-08_20-30.md`](./Plan%202/concretizacion_2026-10-08_20-30.md) | Bibliografía, textos LaTeX, parches y orden de ejecución |
-| [`Plan 2/scripts/`](./Plan%202/scripts/) | `analisis_alcance.py`, `cifras_contexto.py`, `chequeo_factibilidad.py` y `chequeo_cobertura.py` |
-
-> **Relación con la Ronda 2 (abajo):** se integraron sus aportes válidos (brecha de investigación, TreeSHAP, tono, punto decimal y modo condicional). Sus entradas bibliográficas y cifras que no coinciden con las fuentes o con los microdatos (p. ej., *Nature* 605:526 en lugar de 603:864, 761 en lugar de 774 hogares pobres, línea de S/ 446 en lugar de S/ 559.20, H3 inalcanzable con B = 20 %) están detalladas en `Plan 2/problemas_2026-10-08_20-30.md` §6 y **no** se usaron en el informe.
 
 ---
 

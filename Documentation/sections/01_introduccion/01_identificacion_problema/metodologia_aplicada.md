@@ -1,7 +1,5 @@
 # Metodología Aplicada: Identificación y Delimitación del Problema
 
-> **⚠️ Nota (Plan 2, 2026-10-08):** este documento conserva textos anteriores al levantamiento de observaciones (alcance de 5,571 hogares, matriz `INGTPUHD`, hipótesis previas, atribuciones de papers sin verificar). La versión vigente es la de los archivos `.tex` y la de [`Observaciones a levantar/Plan 2`](../../../Observaciones%20a%20levantar/Plan%202/README.md).
-
 Este documento aplica las herramientas metodológicas abstractas (5Ws+1H, Árbol de Problemas, Matriz de Error Social y Teoría de Proxies) de manera exhaustiva y detallada a la problemática de la **pobreza urbana y fallas de identificación en Lima Metropolitana y el Callao**, **sin adelantarse a formular soluciones técnicas ni algoritmos**.
 
 ---

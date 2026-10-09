@@ -1,7 +1,5 @@
 # Metodología Aplicada: Operadores y Adaptaciones Algorítmicas en ENAHO
 
-> **⚠️ Nota (Plan 2, 2026-10-08):** este documento conserva textos anteriores al levantamiento de observaciones (alcance de 5,571 hogares, matriz `INGTPUHD`, hipótesis previas, atribuciones de papers sin verificar). La versión vigente es la de los archivos `.tex` y la de [`Observaciones a levantar/Plan 2`](../../../Observaciones%20a%20levantar/Plan%202/README.md).
-
 Este documento detalla la implementación y adaptación técnica de los operadores de procesamiento y los modelos de clasificación aplicados a los microdatos de la **ENAHO (2024--2025)** para Lima Metropolitana y Callao.
 
 ---

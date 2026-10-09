@@ -1,7 +1,5 @@
 # Sección 3: Metodología
 
-> **⚠️ Nota (Plan 2, 2026-10-08):** este documento conserva textos anteriores al levantamiento de observaciones (alcance de 5,571 hogares, matriz `INGTPUHD`, hipótesis previas, atribuciones de papers sin verificar). La versión vigente es la de los archivos `.tex` y la de [`Observaciones a levantar/Plan 2`](../../Observaciones%20a%20levantar/Plan%202/README.md).
-
 ## 1. Desmitificación Empírica: ¿Por Qué la Pobreza No es un Árbol Simple de Materiales?
 
 Durante la exploración inicial se planteó una interrogante crítica:  

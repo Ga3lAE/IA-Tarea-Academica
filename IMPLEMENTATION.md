@@ -139,7 +139,7 @@ Todos los procesadores de módulos (`Modulo01Processor`, `Modulo02Processor`, et
 
 ### Objetivos Específicos
 1. **Esquema de Partición:**
-   - `GroupKFold` (5 folds) por conglomerado en 2024 y prueba fuera de tiempo en 2025 **sin los 930 hogares panel** (ver `Documentation/Observaciones a levantar/Plan 2`).
+   - `GroupKFold` (5 folds) por conglomerado en 2024 y prueba fuera de tiempo en 2025 **sin los 930 hogares panel** (ver `Documentation/Observaciones a levantar/log_cambios_2026-10-08_21-04.md`).
 2. **Modelos Candidatos:**
    - **Baseline:** Regresión Logística regularizada (Lasso/Ridge) con `class_weight='balanced'`.
    - **Árboles Ensamble:** Random Forest Classifier.
