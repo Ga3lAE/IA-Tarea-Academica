@@ -15,8 +15,18 @@ En datos tabulares complejos, los atributos exhiben naturalezas matemáticas dis
 3. **Variables Categóricas Ordinales ($\mathcal{X}_j = \{c_1 \prec c_2 \prec \dots \prec c_k\}$):** Niveles con una relación de orden natural estricta.
 4. **Variables Categóricas Nominales ($\mathcal{X}_j = \{u_1, u_2, \dots, u_m\}$):** Clases sin relación métrica ni jerárquica.
 
-### Contrato de Representación Vectorial
+### Contrato de Representación Vectorial y Métricas de Asociación
 Para garantizar la compatibilidad con modelos lineales y optimizadores de gradiente, las variables nominales deben ser transformadas mediante operadores de codificación semántica o indicatriz $\psi: \mathcal{X}_j \to \{0, 1\}^m$, mientras que los modelos basados en particiones arbóreas requieren preservación de la ordinalidad natural para evaluar cortes univariados de la forma $\mathbb{I}(x_j \le \theta)$.
+
+En datos tabulares heterogéneos, la correlación de Pearson clásica ($r$) resulta matemáticamente inaplicable para variables nominales u ordinales al imponer una métrica euclidiana artificial. Se formalizan dos métricas teóricas de asociación:
+1. **Asociación Nominal Inter-Covariable (V de Cramér):** Cuantifica el grado de dependencia no direccional entre pares de variables categóricas $X_j$ y $X_k$ a partir del estadístico $\chi^2$:
+   $$V(X_j, X_k) = \sqrt{\frac{\chi^2}{N \cdot \min(r - 1, c - 1)}} \in [0, 1]$$
+   utilizada como criterio de poda de multicolinealidad estructural ($V > 0.80$).
+2. **Dependencia Generalizada con el Target (Información Mutua):** Mide la reducción de entropía de Shannon $H(Y)$ inducida por el conocimiento de $X_j$, sin asumir linealidad ni continuidad:
+   $$I(X_j; Y) = \iint p(x, y) \log \frac{p(x, y)}{p(x)p(y)} \, dx \, dy \ge 0$$
+
+### Reducción de Dimensionalidad: Selección Curada vs. Proyección Factorial (PCA/FAMD)
+El sistema rechaza la proyección factorial continua (PCA o FAMD) sobre la totalidad de la matriz tabular. Dicha rotación ortogonal transforma variables categóricas dispersas en combinaciones lineales densas, lo cual: (i) degrada el sesgo inductivo de los clasificadores basados en árboles (CART, Random Forest, LightGBM), cuya eficiencia radica en particiones ortogonales univariadas alineadas a los ejes; y (ii) anula la interpretabilidad de políticas públicas requerida por la metodología (e.g., valores de atribución local TreeSHAP). Por tanto, la reducción dimensional se implementa formalmente mediante un proceso de **Selección y Curaduría de Características (*Feature Selection*) en tres etapas** guiado por el diagnóstico exploratorio inicial, reduciendo el espacio de $d_{\text{raw}} > 400$ a un subespacio óptimo $\mathcal{X} \subset \mathbb{R}^{d_{\text{curado}}}$ con $d \approx 20$.
 
 ---
 

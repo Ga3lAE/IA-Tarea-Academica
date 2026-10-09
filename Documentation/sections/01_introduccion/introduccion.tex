@@ -1,27 +1,27 @@
 \section{Introducción}
 
 \textbf{\textit{Descripción del problema: Contexto, relevancia y justificativa}}
-\begin{itemize}
-    \item \textbf{Contexto:} En Lima Metropolitana y Callao, la pobreza monetaria urbana afecta al 28.2\% de la población (INEI, 2024), equivalente al 18.61\% de hogares muestreados en la ENAHO 2024. Se caracteriza por ser una ``pobreza urbana cara'' (IEP, 2023) anclada a una tasa de empleo informal del 57.3\% (INEI, 2024).
-    \item \textbf{Falla de Focalización Tradicional:} El sistema estatal de Proxy Means Testing (SISFOH/MCO) sufre de rigidez aditiva e inobservabilidad de ingresos informales. En la ENAHO 2024, el 71.26\% de los hogares pobres (739 de 1,037) no reciben ninguna transferencia pública monetaria o alimentaria (\textit{error de exclusión social}). Asimismo, por autoconstrucción progresiva informal (GRADE, 2024), el 59.4\% de los pobres reside en viviendas de ladrillo y el 79.5\% con piso de cemento/loseta, invalidando reglas univariadas habitacionales simples.
-    \item \textbf{Justificación de la IA:} Se formula el problema como \textbf{Aprendizaje Supervisado de Clasificación Binaria} sobre proxies observables multidimensionales (Vivienda, Demografía familiar, Educación y Empleo informal), mapeando $f: \mathcal{X} \to \mathcal{Y}$ para priorizar asimétricamente la reducción de falsos negativos.
-    \item \textbf{Decisión Arquitectónica:} Se prioriza la clasificación binaria sobre la regresión continua para evitar que la asimetría de altos ingresos distorsione la frontera crítica de pobreza bajo pérdidas cuadráticas ($MSE$).
-\end{itemize}
+
+En Lima Metropolitana y la Provincia Constitucional del Callao, la pobreza monetaria urbana afecta al 28.2\% de la población según cifras oficiales del INEI (2024), lo cual equivale al 18.61\% de los hogares muestreados en la Encuesta Nacional de Hogares (ENAHO 2024). Este fenómeno socioeconómico se configura como una «pobreza urbana cara» (IEP, 2023), condicionada por una tasa de empleo informal del 57.3\% (INEI, 2024) que genera una profunda volatilidad e inestabilidad en los flujos de ingresos cotidianos de las familias. 
+
+Históricamente, los mecanismos estatales de asignación de subsidios y programas sociales mediante \textit{Proxy Means Testing} (SISFOH), basados en regresiones lineales por Mínimos Cuadrados Ordinarios (MCO), han mostrado severas limitaciones de focalización en entornos metropolitanos. En los microdatos de la ENAHO 2024, se comprueba que el 71.26\% de los hogares en situación de pobreza en Lima y Callao (739 de 1,037 familias) no reciben ninguna transferencia pública monetaria ni programas de apoyo alimentario, configurando un crítico error de exclusión social. Asimismo, producto de décadas de autoconstrucción progresiva informal (GRADE, 2024), el 59.4\% de los hogares pobres habita viviendas con paredes consolidadas de ladrillo o cemento y el 79.5\% cuenta con pisos de cemento o loseta. Este hallazgo empírico invalida por completo el uso de reglas habitacionales univariadas simples y exige capturar interacciones no lineales multidimensionales.
+
+Ante esta problemática, se formula la identificación de hogares vulnerables como un problema de \textbf{Aprendizaje Supervisado de Clasificación Binaria} fundamentado en proxies observables de vivienda, estructura demográfica, educación e informalidad laboral. Se prioriza la clasificación discreta sobre la regresión continua para evitar que la asimetría en las colas superiores de ingresos distorsione la frontera crítica de vulnerabilidad bajo funciones de error cuadrático medio ($MSE$).
 
 \textbf{\textit{Hipótesis y/o pregunta a abordar}}
-\begin{itemize}
-    \item \textbf{Pregunta General:} ¿En qué medida un sistema supervisado basado en modelos de árboles (CART, Random Forest y Gradient Boosting), integrando datos físicos del hábitat con la composición demográfica y laboral del hogar, supera a los modelos lineales tradicionales (Regresión Logística) en la detección de pobreza y reducción del error de exclusión en Lima y Callao bajo evaluación temporal fuera de tiempo (2024 $\to$ 2025)?
-    \item \textbf{Hipótesis:} Los clasificadores no lineales de ensamble basados en árboles superarán a la Regresión Logística en al menos 15 puntos porcentuales de $F_1$-score en la clase minoritaria, reduciendo el error de exclusión por debajo del 20\% ($\text{Recall} \ge 80\%$) al evaluarse ciegamente fuera de tiempo sobre la muestra 2025.
-\end{itemize}
+
+Frente al diagnóstico presentado, la investigación plantea la siguiente pregunta central: ¿En qué medida un sistema de aprendizaje supervisado basado en modelos de árboles (CART, Random Forest y Gradient Boosting), integrando proxies observables habitacionales con la composición demográfica y laboral del hogar, supera a los modelos lineales tradicionales en la detección de pobreza y reducción del error de exclusión en Lima y Callao bajo una evaluación temporal fuera de tiempo (2024 $\to$ 2025)?
+
+Como hipótesis principal de trabajo, se postula que los clasificadores no lineales de ensamble basados en árboles, optimizados mediante una función de pérdida sensible al costo, superarán a la Regresión Logística lineal en al menos 12 puntos porcentuales de $F_1$-score en la clase minoritaria, reduciendo el error de exclusión por debajo del 30\% ($\text{Recall} \ge 70\%$) al evaluarse ciegamente de forma fuera de tiempo sobre la muestra de la ENAHO 2025.
 
 \textbf{\textit{Objetivos}}
-\begin{itemize}
-    \item \textbf{General:} Desarrollar y evaluar comparativamente un sistema de clasificación binaria supervisado basado en modelos de árboles (CART, Random Forest y Gradient Boosting), integrando microdatos multidimensionales de la ENAHO, para optimizar la identificación de pobreza y reducir asimétricamente el error de exclusión social en Lima y Callao bajo evaluación fuera de tiempo (2024 $\to$ 2025).
-    \item \textbf{Específicos:}
-    \begin{enumerate}
-        \item Construir e implementar un pipeline modular de datos bajo principios SOLID (patrón \textit{Template Method}) para resolver nulos estructurales por cohabitación intra-vivienda en los módulos 01, 02, 03, 05 y 34 de la ENAHO.
-        \item Diseñar la ingeniería de características mediante agregación relacional ($\text{individuo} \to \text{hogar}$) para incorporar proxies de composición demográfica y empleo informal, aplicando agrupación semántica (\textit{Domain-based Binning}) en hábitat.
-        \item Entrenar y optimizar la jerarquía de modelos del curso (Regresión Logística baseline, Árbol CART, Random Forest y Gradient Boosting / LightGBM) con funciones de costo sensibles a la asimetría ($c_1 \gg c_0$).
-        \item Evaluar el desempeño en un esquema ciego fuera de tiempo (2024 $\to$ 2025) con métricas de desbalance ($F_1$-score, Recall, PR-AUC) y auditar la atribución e interacciones con TreeSHAP.
-    \end{enumerate}
-\end{itemize}
+
+En concordancia con la problemática y las hipótesis formuladas, el \textbf{objetivo general} del proyecto consiste en desarrollar y evaluar comparativamente un sistema de clasificación binaria supervisado basado en modelos de árboles, integrando microdatos multidimensionales de la ENAHO, para optimizar la identificación de hogares en pobreza y mitigar asimétricamente el error de exclusión social en Lima Metropolitana y Callao bajo validación temporal fuera de tiempo (2024 $\to$ 2025).
+
+Para alcanzar este fin, se definen cuatro \textbf{objetivos específicos}:
+\begin{enumerate}
+    \item Construir e implementar un pipeline modular de datos bajo principios SOLID que resuelva los nulos estructurales por cohabitación intra-vivienda e integre de forma consistente los módulos 01, 02, 03, 05 y 34 de la ENAHO.
+    \item Diseñar la ingeniería de características mediante un operador de agregación relacional de individuo a hogar y un agrupamiento semántico por dominio en variables habitacionales para controlar la dispersión sin perder señal predictiva.
+    \item Entrenar y optimizar la jerarquía de modelos del curso (Regresión Logística ElasticNet, CART, Random Forest y LightGBM) aplicando funciones de pérdida sensibles al costo ($c_1 \gg c_0$) que reflejen el desbalance empírico de clases.
+    \item Evaluar el rendimiento en un esquema ciego fuera de tiempo (2024 $\to$ 2025) mediante métricas de desbalance ($F_1$-score, PR-AUC, Recall) y auditar las contribuciones no lineales de las variables mediante TreeSHAP.
+\end{enumerate}

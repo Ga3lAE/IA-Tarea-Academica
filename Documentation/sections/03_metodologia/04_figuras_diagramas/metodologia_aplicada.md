@@ -8,9 +8,11 @@ Este documento define el catálogo formal de figuras y diagramas técnicos desar
 
 | Identificador | Título Técnico de la Figura | Punto de la Plantilla PUCP | Desafío del EDA que Respalda | Destino Editorial Estratégico | Aporte a la Rúbrica (Criterio 4: 6 pts) |
 | :---: | :--- | :---: | :--- | :---: | :--- |
-| **Figura 1** | **Diagrama Arquitectónico del Pipeline Supervisado End-to-End** | **Puntos 1, 2, 3 y 4** (Metodología completa) | Integra los 5 desafíos: Desbalance, Cohabitación, Dispersión, Granularidad $1:M$ y Fuga. | **Informe Escrito Parcial ($\text{\LaTeX}$, $\le 4$ págs)** | Cumple el requisito obligatorio de figura metodológica; demuestra arquitectura formal y operadores ad-hoc. |
-| **Figura 2** | **Diagnóstico EDA de Dispersión y Colapso por Domain Binning** | **Punto 2** (Entrada $\mathcal{X}$) y **Punto 3** (Operadores) | Dispersión extrema y colas largas ($<0.8\%$) en categorías oficiales del INEI (`P103`). | Sección 4 (Resultados de Preparación) / Slides de Exposición | Justifica el descarte de One-Hot ciego y prueba la monotonicidad de la tasa de pobreza por estrato. |
+| **Figura 1** | **Diagrama Arquitectónico del Pipeline Supervisado End-to-End** | **Puntos 1, 2, 3 y 4** (Metodología completa) | Integra los desafíos: Desbalance, Cohabitación, Dispersión, Granularidad $1:M$, Fuga y Reducción. | **Informe Escrito Parcial ($\text{\LaTeX}$, $\le 4$ págs)** | Cumple el requisito obligatorio de figura metodológica; demuestra arquitectura formal y operadores ad-hoc. |
+| **Figura 2** | **Diagnóstico EDA de Dispersión y Colapso por Domain Binning** | **Punto 2** (Entrada $\mathcal{X}$) y **Punto 3** (Operadores) | Dispersión extrema y colas largas ($<0.8\%$) en categorías oficiales del INEI (`P103`). | **Informe Escrito Parcial ($\text{\LaTeX}$, $\le 4$ págs)** | Justifica el descarte de One-Hot ciego y prueba la monotonicidad de la tasa de pobreza por estrato. |
 | **Figura 3** | **Curva de Costo Social Asimétrico y Calibración de Umbral ($\tau^*$)** | **Punto 1** (Notación y pérdida) y **Punto 2** (Salida $\mathcal{Y}$) | Desbalance de clases 1:4.37 y asimetría del error de exclusión de políticas públicas. | Sección 4 (Experimentación) / Slides de Exposición | Demuestra por qué el umbral default $\tau=0.50$ fracasa socialmente y justifica matemáticamente el óptimo $\tau^* \approx 0.30$. |
+| **Figura 4** | **Heatmap de Faltantes Condicional por Cohabitación (Patrón MAR)** | **Punto 2** (Entrada $\mathcal{X}$) y **Punto 3** (Operadores) | Nulos del 2.15% en Módulo 01 concentrados al 100% en hogares secundarios (`HOGAR > 1`). | Sección 4 (Preparación de Datos) / Slides de Exposición | Demuestra que los nulos no son MCAR y valida empíricamente el operador `HousingCohortImputer` (intra-predio). |
+| **Figura 5** | **Matriz de Asociación Categórica (V de Cramér e Información Mutua)** | **Punto 2** (Entrada $\mathcal{X}$) y Reducción Dimensional | Invalidez de correlación de Pearson y multicolinealidad entre servicios básicos de vivienda. | Sección 4 (Preparación de Datos) / Slides de Exposición | Demuestra la poda de covariables con $V > 0.80$ y la selección no lineal guiada por $I(X; Y)$ a $d \approx 20$. |
 
 ---
 
@@ -100,6 +102,32 @@ flowchart TD
   * Justifica matemáticamente el abandono de la heurística simplista de clasificación simétrica.
   * Conecta la teoría de aprendizaje supervisado con la ética pública y el impacto social del proyecto.
 * **Destino Editorial:** Sección 4 (Experimentación) y diapositiva clave de la exposición final.
+
+---
+
+### 2.4 Figura 4: Heatmap de Faltantes Condicional por Cohabitación (Patrón MAR)
+
+* **Propósito Visual:** Matriz de calor bivariada que cruza variables del Módulo 01 (filas: `P101`, `P102`, `P103`, `P110`, `P111`) contra el tipo de hogar (columnas: `Hogar Principal HOGAR=1` vs `Hogar Secundario HOGAR>1`):
+  * **Hogar Principal ($N = 5,451$):** Tasa de nulos = $0.0\%$.
+  * **Hogares Secundarios ($N = 120$):** Tasa de nulos = $100.0\%$.
+* **Vinculación con la Metodología:** Se relaciona con el **Punto 2 (Entrada $\mathcal{X}$)** y el **Punto 3 (Operador `HousingCohortImputer`)**.
+* **Cómo Aporta a la Investigación:**
+  * Prueba empíricamente ante el evaluador que los valores faltantes no son estocásticos (MCAR), sino sistemáticos derivados del diseño censal (MAR condicional al predio físico).
+  * Justifica la propagación intra-predio (`ffill/bfill`) y descalifica tanto la eliminación de filas (`dropna()`) como la imputación por media/moda global.
+* **Destino Editorial:** Sección 4 (Preparación de Datos) y soporte de sustentación oral.
+
+---
+
+### 2.5 Figura 5: Matriz de Asociación Categórica (V de Cramér e Información Mutua)
+
+* **Propósito Visual:** Heatmap triangular superior de $20 \times 20$ covariables seleccionadas:
+  * **Triángulo de Covariables:** Codificado mediante **V de Cramér** ($[0, 1]$), mostrando que pares correlacionados (e.g., agua de red vs. alcantarillado con $V = 0.84$) fueron podados o consolidados para evitar multicolinealidad estructural.
+  * **Columna Marginal Derecha:** Barra de calor de **Información Mutua ($I(X_j; Y)$)**, ordenando las características según su poder no lineal de reducción de entropía sobre la pobreza.
+* **Vinculación con la Metodología:** Se relaciona con el **Punto 2 (Entrada $\mathcal{X}$)** y el protocolo de **Reducción de Dimensionalidad por Selección Curada**.
+* **Cómo Aporta a la Investigación:**
+  * Demuestra el abandono fundamentado de la correlación de Pearson sobre microdatos nominales.
+  * Justifica por qué se redujo el espacio de $>400$ variables a $\sim 20$ variables interpretables sin recurrir a transformaciones PCA densas que destruirían las particiones de los árboles y la explicabilidad TreeSHAP.
+* **Destino Editorial:** Sección 4 (Resultados de Preparación) y diapositiva central de metodología en la sustentación oral.
 
 ---
 

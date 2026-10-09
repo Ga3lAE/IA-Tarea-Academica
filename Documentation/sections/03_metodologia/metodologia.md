@@ -64,10 +64,36 @@ El Análisis Exploratorio de Datos (EDA) inicial sobre los microdatos de la ENAH
 | Desafío Empírico en ENAHO | Hallazgo Cuantitativo del EDA Inicial | Riesgo Metodológico | Estrategia de Mitigación en el Pipeline |
 | :--- | :--- | :--- | :--- |
 | **1. Desbalance de Clases Severo** | Solo 18.61% de hogares en pobreza vs 81.39% no pobres (ratio 1:4.37). | Paradoja de Exactitud: predecir siempre clase 0 da 81.4% *accuracy* pero 100% de exclusión social. | Función *Cost-Sensitive Loss* ($c_1/c_0 = 4.372$), calibración de umbral $\tau^* \approx 0.30$ y optimización de $F_1$/PR-AUC. |
-| **2. Nulos Estructurales en Vivienda** | 2.15% de hogares (120 familias secundarias `HOGAR 22, 33...`) con 100% nulos en Módulo 01. | Pérdida de hogares vulnerables si se aplica `dropna()` o distorsión si se imputa media global. | Operador `HousingCohortImputer`: propagación relacional (`ffill/bfill`) por clave `(CONGLOME, VIVIENDA)`. |
+| **2. Nulos Estructurales en Vivienda** | 2.15% de hogares (120 familias secundarias `HOGAR 22, 33...`) con 100% nulos en Módulo 01. | Pérdida de hogares vulnerables si se aplica `dropna()` o distorsión si se imputa media global. | Diagnóstico con Heatmap de Faltantes Condicional; operador `HousingCohortImputer` (`ffill/bfill`) por `(CONGLOME, VIVIENDA)`. |
 | **3. Dispersión y Colas Largas (*Sparsity*)** | Categorías como mármol, caña o carbón con frecuencias menores al 0.8% en pisos y paredes. | *One-Hot Encoding* crearía matrices hiperdispersas ($>40$ variables irrelevantes) y sobreajuste. | Operador `DomainBinner`: agrupación semántica en 3 niveles ordenados guiados por tasas empíricas de pobreza. |
-| **4. Discrepancia de Granularidad ($1:M$)** | Módulo 01 a nivel de hogar, pero Módulos 02, 03 y 05 con 19,420 personas ($1$ a $12$ por familia). | Imposibilidad de unión tabular directa y pérdida de dinámicas de dependencia intrafamiliar. | Operador `HouseholdAggregator` $\Phi(\cdot)$: bifurcación entre decisor principal ($P203=1$) y métricas del núcleo colectivo. |
-| **5. Riesgo de Fuga de Información** | Gastos e ingresos de Sumaria correlacionados en $>0.85$ con el *target*. | Rendimiento artificialmente perfecto dentro de muestra que colapsa en campo real. | Cortafuegos *Zero-Leakage*: eliminación total de gastos e ingresos monetarios del espacio $\mathcal{X}$. |
+| **4. Granularidad Relacional ($1:M$)** | Módulo 01 a nivel de hogar, pero Módulos 02, 03 y 05 con 19,420 personas ($1$ a $12$ por familia). | Imposibilidad de unión tabular directa y pérdida de dinámicas de dependencia intrafamiliar. | Operador `HouseholdAggregator` $\Phi(\cdot)$: bifurcación entre decisor principal ($P203=1$) y métricas del núcleo colectivo. |
+| **5. Redundancia e Invalidez de Pearson** | Predominio de variables nominales/ordinales; Pearson ($r$) introduce distancias espurias. | Multicolinealidad oculta entre servicios y categorías redundantes no detectables con álgebra lineal clásica. | Matriz de V de Cramér ($V \in [0, 1]$) entre pares de covariables e Información Mutua ($I(X; Y)$) frente al target. |
+| **6. Fuga de Información y Alta Dimensión** | >400 columnas crudas; gastos e ingresos monetarios correlacionados en $>0.85$ con el target. | Sobreajuste y pérdida de aplicabilidad operativa en campo de focalización. | Reducción de Dimensionalidad por Selección Curada (Cortafuegos $\to$ Poda Cramér $\to$ Ranking $I(X; Y)$) a $d \approx 20$. |
+
+---
+
+## 5. Análisis de Asociación Categórica y Reducción de Dimensionalidad
+
+### 5.1 Invalidez de la Correlación de Pearson y Métricas Adecuadas
+El cálculo de correlación de Pearson sobre microdatos categóricos es matemáticamente inválido porque asume variables continuas y relaciones lineales con espaciamiento métrico uniforme. Para el análisis exploratorio y la selección de variables se formula un esquema formal de dos niveles:
+1. **Asociación Categórica entre Covariables (V de Cramér):**  
+   Para detectar multicolinealidad entre atributos nominales (e.g., tipo de abastecimiento de agua vs. red de desagüe), se calcula:
+   $$V(X_j, X_k) = \sqrt{\frac{\chi^2}{N \cdot \min(r - 1, c - 1)}} \quad \in [0, 1]$$
+   Pares con $V > 0.80$ indican redundancia estructural extrema, justificando la eliminación o consolidación de una de las variables.
+2. **Capacidad Predictiva No Lineal frente al Target (Información Mutua):**  
+   Para evaluar el poder discriminante de cada característica continua o discreta respecto al target $Y \in \{0, 1\}$, se computa:
+   $$I(X_j; Y) = \sum_{x \in \mathcal{X}_j} \sum_{y \in \{0, 1\}} p(x, y) \log \left( \frac{p(x, y)}{p(x)p(y)} \right)$$
+   Mide la reducción de incertidumbre (entropía) sobre la pobreza sin asumir relaciones monótonas ni distribuciones normales.
+
+### 5.2 Reducción de Dimensionalidad: Selección Curada vs. Proyección PCA/FAMD
+Se evaluó el uso de técnicas de proyección factorial ortogonal como PCA o FAMD (*Factor Analysis of Mixed Data*). No obstante, la reducción a 2 o 3 componentes densos fue **deliberadamente descartada** por dos razones de ingeniería y ética:
+1. **Degradación de Algoritmos Arbóreos:** Los ensambles de árboles (Random Forest y LightGBM) dividen el espacio mediante particiones ortogonales alineadas a los ejes sobre variables directas (*"¿tiene abastecimiento por red pública?"*). Rotar el espacio mediante combinaciones lineales diluye las señales binarias discretas en dimensiones continuas abstractas, deteriorando la capacidad inductiva de los árboles.
+2. **Explicabilidad Pública y Cumplimiento Ético:** En la asignación de transferencias estatales y focalización del SISFOH, un clasificador debe proporcionar explicabilidad univariada exacta mediante valores Shapley (TreeSHAP). Proyectar sobre componentes latentes abstractos imposibilita justificar a una familia o auditor por qué fue o no clasificada como pobre.
+
+Por tanto, la **Reducción de Dimensionalidad** se implementa como un proceso riguroso de **Selección y Curaduría de Características (*Feature Selection*) en tres etapas**, reduciendo el espacio de más de 400 variables originales del INEI a un vector compacto y no redundante de $d \approx 20$ dimensiones físicas interpretables:
+* **Etapa 1 (Cortafuegos Ético):** Exclusión de todas las variables monetarias de gasto e ingreso del Módulo 34.
+* **Etapa 2 (Poda de Redundancia por V de Cramér):** Eliminación de covariables con asociación redundante ($V > 0.80$).
+* **Etapa 3 (Filtro por Información Mutua):** Selección de las características con mayor reducción de entropía condicional $I(X_j; Y)$.
 
 ---
 
