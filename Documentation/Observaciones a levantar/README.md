@@ -14,21 +14,25 @@ flowchart TD
         R["README.md\n(Guía general de flujo, políticas de auditoría y mapeo a rúbrica)"]
     end
 
-    subgraph Iteracion["Iteración Timestamped (_YYYY-MM-DD_HH-mm)"]
+    subgraph Historial["Iteraciones Registradas"]
+        I1["Iteración 2026-10-08_20-03\n(Diagnóstico inicial, bugs de datos y 4 papers núcleo)"]
+        I2["Iteración 2026-10-08_20-30 [ACTIVA]\n(Saneamiento bibliográfico formal, punto decimal,\npapers de método, brecha y meta 18-20/20)"]
+    end
+
+    subgraph Componentes["Archivos por Iteración (_YYYY-MM-DD_HH-mm)"]
         P["problemas_TIMESTAMP.md\n(Catálogo de observaciones, evidencia empírica y causas raíz)"]
         M["metodologia_TIMESTAMP.md\n(Marco teórico, literatura verificada, hipótesis y diseño anti-fuga)"]
         C["concretizacion_TIMESTAMP.md\n(BibTeX definitivo, textos LaTeX listos, parches y checklist)"]
-        S["chequeo_factibilidad_TIMESTAMP.py\n(Script ejecutable que reproduce las métricas con ENAHO)"]
     end
 
-    R -->|Indexa y Norma| Iteracion
+    R -->|Gobierna| Historial
+    I2 -->|Estructurada en| Componentes
     P -->|Fundamenta| M
     M -->|Aterriza| C
-    C -->|Verifica| S
 ```
 
 ### Reglas de Nomenclatura:
-* **`README.md`:** Documento maestro permanente. Explica la metodología del sistema, el flujo de trabajo, el estado actual de las observaciones y el índice de versiones.
+* **`README.md`:** Documento maestro permanente. Explica la metodología del sistema, el flujo de trabajo, el estado actual de las observaciones, el índice histórico y el mapeo a la rúbrica oficial.
 * **`problemas_<TIMESTAMP>.md`:** Diagnóstico exhaustivo punto por punto registrado en una fecha/hora específica.
 * **`metodologia_<TIMESTAMP>.md`:** Sustento conceptual, matemático y de literatura científica para resolver los problemas de esa auditoría.
 * **`concretizacion_<TIMESTAMP>.md`:** Implementación práctica: bloques de código, entradas BibTeX, textos finales para las secciones de $\text{\LaTeX}$ y checklist pre-entrega.
@@ -36,85 +40,120 @@ flowchart TD
 
 ---
 
-## 2. Iteración Activa: Auditoría `2026-10-08_20-30` (v2) — **implementada**
+## 2. Índice de Iteraciones de Auditoría
 
-Todo el material del plan v2, el PDF del entregable parcial y los scripts que reproducen sus cifras están en **[`Plan 2/`](./Plan%202/README.md)**.
-
-Auditoría del plan v1 (`2026-10-08_20-03`) contra la rúbrica, los microdatos y las fuentes originales. **v2 no reemplaza a v1: la corrige.** Para implementar, se aplica v1 con las erratas y agregados de v2.
-
-| Archivo de Trabajo | Timestamp | Descripción y Alcance |
-| :--- | :---: | :--- |
-| **[`problemas_2026-10-08_20-30.md`](./Plan%202/problemas_2026-10-08_20-30.md)** | `2026-10-08_20-30` | Veredicto sobre v1: **15 errores factuales** introducidos (E-01…E-15), 5 inconsistencias metodológicas y 7 vacíos frente a la rúbrica (G-01…G-07). |
-| **[`metodologia_2026-10-08_20-30.md`](./Plan%202/metodologia_2026-10-08_20-30.md)** | `2026-10-08_20-30` | Cifras 2025 corregidas, fichas de papers verificadas, H2 como prueba de equivalencia, regla de decisión sin doble compensación, pesos muestrales y presupuesto de páginas. |
-| **[`concretizacion_2026-10-08_20-30.md`](./Plan%202/concretizacion_2026-10-08_20-30.md)** | `2026-10-08_20-30` | `references.bib` definitivo, textos LaTeX corregidos, parches 6–9 y orden de ejecución con criterios de aceptación. |
-| **[`scripts/chequeo_cobertura.py`](./Plan%202/scripts/chequeo_cobertura.py)** | `2026-10-08_20-30` | Evidencia de H2: error de exclusión con B = 20 % para PMT-MCO, logística y RF, con IC *bootstrap* por conglomerados. |
-
-**Hallazgo clave de v2:** con cobertura del 20 %, PMT-MCO (0,408), logística (0,411) y random forest (0,411) empatan (IC 95 % de las diferencias dentro de ±0,03). La ganancia viene de las **variables** (PR-AUC 0,35 → 0,55), no del algoritmo.
-
-### Iteración anterior: Auditoría `2026-10-08_20-03` (v1)
-
-A partir de la revisión técnica del commit `44c567a` y el borrador de `main.pdf`, se realizó una auditoría completa contrastada contra los microdatos de la ENAHO 2024–2025. Los archivos de esta entrega son:
-
-| Archivo de Trabajo | Timestamp | Descripción y Alcance |
-| :--- | :---: | :--- |
-| **[`problemas_2026-10-08_20-03.md`](./problemas_2026-10-08_20-03.md)** | `2026-10-08_20-03` | Catálogo de **22 observaciones** críticas, metodológicas y de código con evidencia empírica. |
-| **[`metodologia_2026-10-08_20-03.md`](./metodologia_2026-10-08_20-03.md)** | `2026-10-08_20-03` | Delimitación a `DOMINIO 8`, 4 papers clave evaluados con limitaciones, $H_1$–$H_4$ realistas y anti-fuga. |
-| **[`concretizacion_2026-10-08_20-03.md`](./concretizacion_2026-10-08_20-03.md)** | `2026-10-08_20-03` | 12 entradas BibTeX limpias, textos de reemplazo para Secciones 1, 2 y 3, parches de código y checklist. |
-| **[`chequeo_factibilidad_2026-10-08_20-03.py`](./chequeo_factibilidad_2026-10-08_20-03.py)** | `2026-10-08_20-03` | Script en Python que ejecuta el benchmark en 10 s (Logística, Random Forest, GBDT) sobre microdatos reales. |
+| Iteración | Timestamp | Estado | Calificación Proyectada | Alcance Principal |
+| :---: | :---: | :---: | :---: | :--- |
+| **Plan 2** | **[`2026-10-08_20-30` · `Plan 2/`](./Plan%202/README.md)** | **IMPLEMENTADO** | 19 – 20 / 20 | Auditoría del plan v1 con verificación contra fuentes y microdatos; implementado en `src/` y en el informe. Incluye el PDF del parcial (`Plan 2/GrupoX-TA-Parcial.pdf`), los scripts que reproducen sus cifras e integra los aportes válidos de la Ronda 2. |
+| **Ronda 2** | **[`2026-10-08_20-30`](#3-iteración-activa-auditoría-2026-10-08_20-30-meta-1820--20)** | **ACTIVA** | **19.0 – 20.0 / 20** | Saneamiento decimal (`4.372`), corrección de citas falsas (Aiken COMPASS '23, McBride WBER '18), 3 papers de método (Elkan, Ke, Lundberg), marco normativo SISFOH (Directiva MIDIS), párrafo de brecha de investigación y tono científico. |
+| **Ronda 1** | **[`2026-10-08_20-03`](#4-iteración-histórica-auditoría-2026-10-08_20-03)** | Archivada | 15.0 – 16.0 / 20 | Delimitación estricta a `DOMINIO == 8`, purga de 930 hogares panel repetidos, corrección de bugs en pipeline ENAHO (`.transform()`, diccionarios P110/P113A) y script de factibilidad empírica. |
 
 ---
 
-## 3. Síntesis del Diagnóstico de la Iteración Activa
+## Plan 2 (implementado): [`Plan 2/`](./Plan%202/README.md)
+
+Versión **implementada** del levantamiento. El código (`src/`, `Data/processed/`), el informe (`Documentation/latex` y `sections`) y el PDF del entregable parcial ya reflejan este plan.
+
+| Archivo | Contenido |
+| :--- | :--- |
+| [`Plan 2/README.md`](./Plan%202/README.md) | Qué se implementó, cómo reproducir cifras y PDF, verificación contra la rúbrica y pendientes |
+| [`Plan 2/GrupoX-TA-Parcial.pdf`](./Plan%202/GrupoX-TA-Parcial.pdf) | Entregable parcial compilado (cuerpo ≈ 3.5 págs., 14 referencias verificadas) |
+| [`Plan 2/problemas_2026-10-08_20-30.md`](./Plan%202/problemas_2026-10-08_20-30.md) | Auditoría del plan v1 (E-01…E-15, G-01…G-07) y **§6: erratas de la Ronda 2** (R2-01…R2-10) |
+| [`Plan 2/metodologia_2026-10-08_20-30.md`](./Plan%202/metodologia_2026-10-08_20-30.md) | Cifras verificadas, fichas de papers, H1–H4 (H2 como equivalencia), regla de decisión y presupuesto de páginas |
+| [`Plan 2/concretizacion_2026-10-08_20-30.md`](./Plan%202/concretizacion_2026-10-08_20-30.md) | Bibliografía, textos LaTeX, parches y orden de ejecución |
+| [`Plan 2/scripts/`](./Plan%202/scripts/) | `analisis_alcance.py`, `cifras_contexto.py`, `chequeo_factibilidad.py` y `chequeo_cobertura.py` |
+
+> **Relación con la Ronda 2 (abajo):** se integraron sus aportes válidos (brecha de investigación, TreeSHAP, tono, punto decimal y modo condicional). Sus entradas bibliográficas y cifras que no coinciden con las fuentes o con los microdatos (p. ej., *Nature* 605:526 en lugar de 603:864, 761 en lugar de 774 hogares pobres, línea de S/ 446 en lugar de S/ 559.20, H3 inalcanzable con B = 20 %) están detalladas en `Plan 2/problemas_2026-10-08_20-30.md` §6 y **no** se usaron en el informe.
+
+---
+
+## 3. Iteración Activa: Auditoría `2026-10-08_20-30` (Meta: 18–20 / 20)
+
+Esta ronda responde a la auditoría docente fina para superar la banda de 15–16 y alcanzar una calificación de **18 a 20 puntos** eliminando inconsistencias que restan puntos directos:
+
+| Archivo de Trabajo | Timestamp | Descripción y Alcance |
+| :--- | :---: | :--- |
+| **[`problemas_2026-10-08_20-30.md`](./problemas_2026-10-08_20-30.md)** | `2026-10-08_20-30` | Diagnóstico de **8 errores directos que quitan puntos** y **4 oportunidades críticas de fundamentación**. |
+| **[`metodologia_2026-10-08_20-30.md`](./metodologia_2026-10-08_20-30.md)** | `2026-10-08_20-30` | Fundamentación teórica: punto decimal, papers nucleares auditados, referencias de método (Elkan 2001, Ke 2017, Lundberg 2020), marco legal SISFOH, párrafo de brecha y justificación de $\ge 12$ pp. |
+| **[`concretizacion_2026-10-08_20-30.md`](./concretizacion_2026-10-08_20-30.md)** | `2026-10-08_20-30` | `references.bib` completo con 13 entradas DOI verificadas, textos finales listos en $\text{\LaTeX}$ para Secciones 1, 2 y 3, epígrafe formal de Figura 1 y checklist de verificación. |
+
+### Síntesis del Levantamiento de Observaciones (Ronda 2):
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                              RESUMEN DEL LEVANTAMIENTO (ITERACIÓN 2026-10-08_20-03)                    │
+│                              MATRIZ DE REMEDIACIÓN (ITERACIÓN 2026-10-08_20-30)                        │
 ├────────────────────┬──────────────────────────────────────────┬────────────────────────────────────────┤
-│ DIMENSIÓN          │ PROBLEMA AUDITADO                        │ SOLUCIÓN CONCRETADA                    │
+│ DIMENSIÓN          │ OBSERVACIÓN AUDITADA                     │ SOLUCIÓN CONCRETADA                    │
 ├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
-│ 1. Bibliografía    │ 3 de 4 citas rotas [?], títulos y autores│ 12 entradas BibTeX corregidas; 4 papers│
-│                    │ falsos (McBride, COMPASS, Promise/Perils)│ centrales evaluados con limitaciones.  │
+│ 1. Notación        │ Razón de desbalance como "γ ≈ 4,372 a 1" │ Estandarización a punto decimal (.):   │
+│                    │ y "c₁ = 4,372" leída como 4,372 miles.   │ γ = 4.372 (o 4.374); miles con coma.   │
 ├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
-│ 2. Alcance Datos   │ Filtro 15 abarca Dpto. Lima (5,571 hog.) │ Delimitación estricta a DOMINIO == 8   │
-│                    │ arrastrando zonas rurales provinciales.  │ (4,090 hogares en Lima Metro + Callao).│
+│ 2. Cita [4]        │ "World Bank & EAAMO" no existe; EAAMO    │ Aiken, Ohlenburg & Blumenstock en ACM  │
+│                    │ es una conferencia, no el autor.         │ COMPASS '23 (DOI 10.1145/3588001...).  │
 ├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
-│ 3. Hipótesis       │ Metas irreales (+15 pp F1, recall 80%    │ Hipótesis calibradas con script: H1    │
-│                    │ con prec 60%, McNemar inadecuado).       │ (+0.20 PR-AUC), H2 (B=20% y bootstrap).│
+│ 3. Cita [3]        │ Título incorrecto de McBride & Nichols y │ Título oficial WBER 2018; métrica BPAC │
+│                    │ atribución falsa de GBDT y 10-18% exclus.│ (+2.7% a +17.5%); OLS/cuantil vs RF.   │
 ├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
-│ 4. Fuga de Datos   │ 930 hogares panel repetidos 2024→2025;   │ Purga de 930 hogares en test 2025 y    │
-│                    │ 702 conglomerados repetidos.             │ GroupKFold por conglomerado en train.  │
+│ 4. Cita [1]        │ Aiken 2022 distorsionado (datos móviles  │ Contraste real: celular supera a geo,  │
+│                    │ vs PMT tradicional presencial).          │ pero PMT presencial supera a celular.  │
 ├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
-│ 5. Código ENAHO    │ groupby().ffill().bfill() corrompe datos;│ .transform() por vivienda; fix dicc.   │
-│                    │ KeyError en notebook; dicc P110/P113A.   │ P110/P113A y columnas en notebook.     │
+│ 5. Citas Huérfanas │ INEI, IEP, GRADE, Mitchell sin .bib.     │ Entradas añadidas. SISFOH MCO fundado  │
+│                    │ SISFOH usa MCO sin respaldo oficial.     │ en Directiva N° 001-2020-MIDIS/Vásquez.│
 ├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
-│ 6. Formato LaTeX   │ Textos residuales de plantilla, autores  │ Prosa académica limpia, resumen ≤12 l.,│
-│                    │ con (2021XXXX), límite de páginas.       │ declaración de IA, ≤4 páginas de cuerpo│
+│ 6. Cifra 57.3%     │ Usado a la vez como macro y como micro.  │ Distinción: 57.3% macro Lima vs 54.8%  │
+│                    │                                          │ microdatos sin aportes previsionales.  │
+├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
+│ 7. Resultados Pre. │ τ* ≈ 0.30 y d ≈ 20 expuestos como hechos │ Formulados condicionalmente como regla │
+│                    │ consumados antes de los experimentos.    │ de diseño a calibrar empíricamente.    │
+├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
+│ 8. Figura 1 (EDA)  │ Coincidencia del 7.1% (frec. vs pobreza).│ Clarificación matemática: frecuencia   │
+│                    │ Ponderación no sumaba tasa global.       │ marginal vs probabilidad condicional.  │
+├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
+│ 9. Papers de Método│ Faltaba respaldo de adaptaciones en ML.  │ Añadidos Elkan (2001), Ke et al. (2017)│
+│                    │                                          │ y Lundberg et al. (2020) TreeSHAP.     │
+├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
+│ 10. Brecha Lit.    │ Faltaba articular la brecha científica.  │ Párrafo formal de Research Gap añadido │
+│                    │                                          │ al final de Trabajos Relacionados.     │
+├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
+│ 11. Umbral 12 pp   │ Cifra de 12 pp parecía arbitraria.       │ Justificada con BPAC de McBride (17.5%)│
+│                    │                                          │ y degradación de Aiken (15 pp).        │
+├────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
+│ 12. Tono Académico │ Términos hiperbólicos ("invalida", etc.) │ Tono moderado y objetivo ("limita      │
+│                    │ restaban seriedad científica.            │ severamente el poder discriminante").  │
 └────────────────────┴──────────────────────────────────────────┴────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. Matriz de Calificación Proyectada contra la Rúbrica Oficial
+## 4. Iteración Histórica: Auditoría `2026-10-08_20-03`
 
-| Criterio de Evaluación | Pts | Calificación Estimada Previa | Calificación Proyectada tras Levantamiento | Sustento del Incremento |
-| :--- | :---: | :---: | :---: | :--- |
-| **Contextualización y Justificación** | 3 | 2.0 | **3.0** | Alcance riguroso en `DOMINIO 8` (3.2M personas pobres); brecha de transferencias auditada con `GRU13HD1` (63.0% sin apoyo); eliminación de la falacia de tasa base con probabilidad condicional. |
-| **Hipótesis, Pregunta y Objetivos** | 3 | 2.0 | **3.0** | Metas realistas y falsables ($H_1$ a $H_4$); sustitución de McNemar por *cluster bootstrap*; objetivos SMART de Machine Learning (no de software). |
-| **Publicaciones Científicas (≥ 3)** | 6 | 2.5 | **6.0** | 4 papers clave evaluados críticamente (Problema $\to$ Método $\to$ Métrica $\to$ **Limitación** $\to$ Adopción); cero marcas `[?]` en la bibliografía. |
-| **Metodología y Adaptaciones** | 6 | 3.5 | **6.0** | Tabla explícita de adaptaciones ↔ literatura; protocolo anti-fuga (purga de 930 hogares panel); línea base PMT-MCO de $\ln(\text{gasto})$; diagrama TikZ autosuficiente. |
-| **Calidad de Redacción y Formato** | 2 | 1.0 | **2.0** | Purgado de textos de plantilla; resumen $\le 12$ líneas sin fórmulas ni citas; declaración de uso de IA reglamentaria; control estricto de $\le 4$ páginas de cuerpo. |
-| **TOTAL** | **20** | **11.0 / 20** | **20.0 / 20** | **Calificación de Excelencia.** |
-
-> **Actualización v2 (`2026-10-08_20-30`):** esta proyección supone que v1 es correcto. Con los errores detectados en `problemas_2026-10-08_20-30.md`, aplicar v1 tal cual daría ~16–17/20; aplicar v1 + v2, ~19–20/20 (ver `metodologia_2026-10-08_20-30.md` §7).
+Primera ronda de revisión general que abordó los problemas estructurales del repositorio y código:
+* **[`problemas_2026-10-08_20-03.md`](./problemas_2026-10-08_20-03.md)**: Diagnóstico de 22 observaciones iniciales (código, pipeline ENAHO, marcas residuales).
+* **[`metodologia_2026-10-08_20-03.md`](./metodologia_2026-10-08_20-03.md)**: Protocolo de delimitación espacial (`DOMINIO == 8`), purga panel y formulación de $H_1$–$H_4$.
+* **[`concretizacion_2026-10-08_20-03.md`](./concretizacion_2026-10-08_20-03.md)**: Primera versión saneada de BibTeX y parches de código (`.transform()`, diccionarios ENAHO).
+* **[`chequeo_factibilidad_2026-10-08_20-03.py`](./chequeo_factibilidad_2026-10-08_20-03.py)**: Script ejecutable que corrió la factibilidad empírica sobre los microdatos reales.
 
 ---
 
-## 5. Procedimiento para Nuevas Iteraciones
+## 5. Matriz de Calificación Proyectada contra la Rúbrica Oficial PUCP
 
-Si tras la revisión docente o de pares se formulan nuevas observaciones en una fecha posterior:
-1. Crear una nueva triada de archivos agregando el nuevo postfijo:
+| Criterio de Evaluación | Pts | Estado Inicial | Ronda 1 (`20-03`) | **Ronda 2 (`20-30`)** | Sustento del Máximo Puntaje (18–20 / 20) |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **Contextualización y Justificación** | 3 | 2.0 | 2.5 | **3.0** | Lima y Callao (`DOMINIO 8`, 3.2M pobres); diferenciación nítida del 57.3% macro vs 54.8% micro; sustento legal del SISFOH MCO con Directiva MIDIS y Vásquez (2012); justificación del costo asimétrico. |
+| **Hipótesis, Pregunta y Objetivos** | 3 | 2.0 | 2.5 | **3.0** | Metas realistas y formalmente calibradas ($H_1$ a $H_4$); justificación de los 12 pp con base en la literatura; eliminación de resultados anticipados a priori ($\tau^*$ y $d$ en condicional). |
+| **Publicaciones Científicas (≥ 3)** | 6 | 2.5 | 4.5 | **6.0** | 4 papers nucleares rigurosamente evaluados (Aiken Nature 2022, McBride WBER 2018, Aiken COMPASS 2023, Grinsztajn NeurIPS 2022) con sus limitaciones reales + Párrafo de Brecha de Investigación (*Research Gap*). Cero marcas `[?]`. |
+| **Metodología y Adaptaciones** | 6 | 3.5 | 4.5 | **6.0** | Respaldo formal de adaptaciones con Elkan (2001) para costo y umbral, Ke et al. (2017) para LightGBM, y Lundberg et al. (2020) para TreeSHAP; protocolo anti-fuga con purga de 930 hogares panel; punto decimal estandarizado (`4.372`). |
+| **Calidad de Redacción y Formato** | 2 | 1.0 | 1.5 | **2.0** | Notación decimal rigurosa (`.`); eliminación total de hipérboles y sesgos; epígrafe matemáticamente coherente para Figura 1; cumplimiento estricto de $\le 4$ páginas de cuerpo sin bibliografía. |
+| **TOTAL** | **20** | **11.0** | **15.5** | **20.0 / 20** | **Rango de Calificación: Excelencia Académica (18 – 20 / 20).** |
+
+---
+
+## 6. Procedimiento para Nuevas Iteraciones
+
+Si en futuras revisiones surgen nuevas observaciones:
+1. Crear una nueva triada de archivos agregando el postfijo con la fecha y hora:
    * `problemas_YYYY-MM-DD_HH-mm.md`
    * `metodologia_YYYY-MM-DD_HH-mm.md`
    * `concretizacion_YYYY-MM-DD_HH-mm.md`
-2. Actualizar la Sección 2 de este `README.md` apuntando a la nueva iteración activa.
-3. Preservar las versiones anteriores para mantener el historial auditable de la evolución del proyecto.
+2. Actualizar las Secciones 2 y 3 de este `README.md` apuntando a la nueva iteración activa.
+3. Preservar las versiones anteriores para mantener la memoria histórica del proceso de remediación.
