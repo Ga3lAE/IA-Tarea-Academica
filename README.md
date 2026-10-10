@@ -37,6 +37,14 @@ Los datos provienen de la **ENAHO con Metodología Actualizada** del INEI para l
 
 *Alcance:* Lima Metropolitana tal como la define el INEI (`DOMINIO 8` = Provincia de Lima `1501` + Callao `07`), nivel de inferencia oficial de la ENAHO. Ver [`log_cambios_2026-10-08_21-04.md`](Documentation/Observaciones%20a%20levantar/log_cambios_2026-10-08_21-04.md).
 
+> [!IMPORTANT]
+> **Descarga de Microdatos con Git LFS:**  
+> Los microdatos crudos en `Data/` están versionados con **Git LFS** debido a su tamaño. Para clonar los datos reales y evitar punteros de texto:
+> ```bash
+> git lfs install
+> git lfs pull
+> ```
+
 ---
 
 ## 3. Desafíos Técnicos de los Datos Urbanos y Soluciones
