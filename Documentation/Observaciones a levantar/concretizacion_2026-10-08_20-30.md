@@ -1,8 +1,11 @@
 # Plan de Concretización y Textos Definitivos (Auditoría: 2026-10-08 20:30)
 
+> [!CAUTION]
+> **DOCUMENTO HISTÓRICO SUPERADO CON ERRATAS:** Este borrador intermedio contiene entradas BibTeX con errores (DOI de McBride, metadatos de Aiken) y cifras no correspondientes a la delimitación oficial de Lima Metropolitana. **La versión vigente, corregida y verificada contra los microdatos es [`log_cambios_2026-10-08_21-04.md`](./log_cambios_2026-10-08_21-04.md) e implementada en [`Documentation/latex/references.bib`](../latex/references.bib) y [`Documentation/latex/main.tex`](../latex/main.tex).**
+
 **Módulo:** Tarea Académica — Entregable Parcial (1INF24 Inteligencia Artificial, PUCP)  
 **Fecha y Hora:** Jueves, 08 de Octubre de 2026 — 20:30 hrs  
-**Objetivo:** Proveer los bloques de texto $\text{\LaTeX}$ finales, entradas BibTeX saneadas y código de verificación para implementar de inmediato en el informe, garantizando el cumplimiento de la rúbrica de excelencia ($\ge 18.5$ / 20).
+**Estado:** SUPERADO por `log_cambios_2026-10-08_21-04.md`
 
 ---
 
