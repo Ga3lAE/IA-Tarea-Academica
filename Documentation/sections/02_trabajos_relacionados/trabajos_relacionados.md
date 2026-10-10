@@ -1,6 +1,11 @@
 # Sección 2: Trabajos Relacionados
 
-## 1. Síntesis Crítica del Núcleo de Publicaciones Científicas
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:**  
+> Este documento Markdown corresponde a un borrador preliminar de trabajo.  
+> La versión oficial, consolidada y evaluable para la entrega parcial es el código $\text{\LaTeX}$ en [`trabajos_relacionados.tex`](./trabajos_relacionados.tex) y [`Documentation/latex/main.pdf`](../../latex/main.pdf), que incluye la evaluación crítica con limitaciones de McBride & Nichols (2018), Brown et al. (2018), Noriega-Campero et al. (2020), Aiken et al. (2023), la Tabla 1 y el párrafo formal de Brecha de Investigación (*Research Gap*). Ver [`log_cambios_2026-10-08_21-04.md`](../../Observaciones%20a%20levantar/log_cambios_2026-10-08_21-04.md).
+
+---
 
 Para sustentar el diseño del pipeline y las adaptaciones algorítmicas, se seleccionó un núcleo estratégico de cuatro publicaciones primarias de alto impacto internacional indexadas en *Nature*, *NeurIPS*, *The World Bank Economic Review* y *ACM*, cubriendo los pilares de focalización social, arquitectura tabular, fallo de modelos lineales y validación temporal:
 

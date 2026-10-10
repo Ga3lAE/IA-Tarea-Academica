@@ -1,6 +1,7 @@
 # Metodología Aplicada: Identificación y Delimitación del Problema
 
-Este documento aplica las herramientas metodológicas abstractas (5Ws+1H, Árbol de Problemas, Matriz de Error Social y Teoría de Proxies) de manera exhaustiva y detallada a la problemática de la **pobreza urbana y fallas de identificación en Lima Metropolitana y el Callao**, **sin adelantarse a formular soluciones técnicas ni algoritmos**.
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:** Este borrador de Capa 2 conserva cifras preliminares de etapas tempranas. La versión oficial y evaluable es [`Documentation/sections/01_introduccion/introduccion.tex`](../introduccion.tex) y [`Documentation/latex/main.pdf`](../../../latex/main.pdf).
 
 ---
 

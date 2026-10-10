@@ -1,5 +1,8 @@
 # Metodología Aplicada: Operadores y Adaptaciones Algorítmicas en ENAHO
 
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:** Este borrador de Capa 2 conserva esquemas algorítmicos preliminares. La versión oficial y evaluable es [`Documentation/sections/03_metodologia/metodologia.tex`](../metodologia.tex) y [`Documentation/latex/main.pdf`](../../../latex/main.pdf).
+
 Este documento detalla la implementación y adaptación técnica de los operadores de procesamiento y los modelos de clasificación aplicados a los microdatos de la **ENAHO (2024--2025)** para Lima Metropolitana y Callao.
 
 ---

@@ -1,6 +1,7 @@
 # Metodología Aplicada: Formulación Matemática del Clasificador de Pobreza Urbana
 
-Este documento materializa el marco matemático abstracto de aprendizaje supervisado sobre el caso concreto de clasificación de pobreza de hogares en **Lima Metropolitana y la Provincia Constitucional del Callao** a partir de los microdatos oficiales de la **ENAHO**.
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:** Este borrador de Capa 2 conserva formulaciones exploratorias previas. La versión oficial y evaluable es [`Documentation/sections/03_metodologia/metodologia.tex`](../metodologia.tex) y [`Documentation/latex/main.pdf`](../../../latex/main.pdf).
 
 ---
 

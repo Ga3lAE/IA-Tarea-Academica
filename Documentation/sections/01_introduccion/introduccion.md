@@ -1,6 +1,11 @@
 # Sección 1: Introducción
 
-## 1. Descripción del Problema: Contexto, Relevancia y Justificación
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:**  
+> Este documento Markdown corresponde a un borrador preliminar de trabajo.  
+> La versión oficial, consolidada y evaluable para la entrega parcial es el código $\text{\LaTeX}$ en [`introduccion.tex`](./introduccion.tex) y [`Documentation/latex/main.pdf`](../../latex/main.pdf), cuyas cifras corresponden estrictamente a Lima Metropolitana (`DOMINIO 8`, 4,090 hogares, 67.2% sin transferencias públicas, canasta de S/ 559.20). Ver [`log_cambios_2026-10-08_21-04.md`](../../Observaciones%20a%20levantar/log_cambios_2026-10-08_21-04.md).
+
+---
 
 ### Contexto Socioeconómico y Territorial
 En Lima Metropolitana y la Provincia Constitucional del Callao, la pobreza monetaria urbana experimentó una agudización severa tras la crisis sanitaria y los recientes choques inflacionarios en la canasta básica familiar. Según el Instituto Nacional de Estadística e Informática (INEI, 2024), la pobreza monetaria afectó al **28.2% de la población de la capital en 2024** (~2.9 millones de personas), duplicando los registros prepandemia (14.2% en 2019). En la muestra de microdatos de la Encuesta Nacional de Hogares (ENAHO 2024), esto se traduce en una prevalencia del **18.61% de los hogares** bajo la línea de pobreza oficial.

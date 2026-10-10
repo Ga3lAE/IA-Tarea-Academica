@@ -1,5 +1,8 @@
 # Metodología Aplicada: Catálogo y Trazabilidad de Figuras del Pipeline de Pobreza
 
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:** Este borrador de Capa 2 conserva catálogos de figuras exploratorias previas. La versión oficial y evaluable es [`Documentation/sections/03_metodologia/metodologia.tex`](../metodologia.tex) y [`Documentation/latex/main.pdf`](../../../latex/main.pdf).
+
 Este documento define el catálogo formal de figuras y diagramas técnicos desarrollados para respaldar la **Sección 3: Metodología** sobre los microdatos de la **ENAHO (2024--2025)** en Lima Metropolitana y Callao. Establece la trazabilidad exacta de cada figura: a qué directriz de la plantilla responde, qué inconveniente de los datos aborda y cómo aporta al cumplimiento de la rúbrica del curso (1INF24).
 
 ---

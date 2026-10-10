@@ -1,6 +1,7 @@
 # Metodología Aplicada: Comportamiento Entrada/Salida y Diagnóstico EDA en Microdatos ENAHO
 
-Este documento define la estructura técnica de las entradas y salidas del sistema sobre los microdatos de la **ENAHO (2024--2025)** para Lima Metropolitana y Callao, detallando los **inconvenientes empíricos identificados durante el Análisis Exploratorio de Datos (EDA Inicial)** y las salvaguardas de ingeniería para mitigarlos.
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:** Este borrador de Capa 2 conserva esquemas exploratorios previos. La versión oficial y evaluable es [`Documentation/sections/03_metodologia/metodologia.tex`](../metodologia.tex) y [`Documentation/latex/main.pdf`](../../../latex/main.pdf).
 
 ---
 

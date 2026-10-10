@@ -19,6 +19,8 @@ El problema es relevante porque cada hogar pobre no identificado queda fuera de 
     \item \textbf{H4 (estabilidad temporal):} la PR-AUC cae como máximo 0.05 entre la validación de 2024 y la prueba de 2025.
 \end{itemize}
 
+Las metas de H1 y H3 se establecieron a partir de la calibración en la validación interna de 2024 (mediante partición agrupada por conglomerados), manteniendo a la cohorte 2025 como muestra de prueba estrictamente ciega. Metodológicamente, el estudio se alinea con los temas de aprendizaje supervisado del curso (Tema 3: modelos lineales y regresión logística; Tema 4: árboles de decisión y ensambles de \textit{Random Forest} y Gradient Boosting), empleando PR-AUC ante el desbalance de clases y TreeSHAP para la explicabilidad.
+
 \subsection{Objetivos}
 
 \textbf{Objetivo general:} desarrollar y evaluar comparativamente clasificadores supervisados que identifiquen a los hogares en pobreza monetaria de Lima Metropolitana con microdatos de la ENAHO, sin variables de ingreso ni gasto, priorizando un bajo error de exclusión y la estabilidad en el tiempo.

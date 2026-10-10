@@ -1,5 +1,8 @@
 # Metodología Aplicada: Formulación de Hipótesis y Preguntas de Investigación
 
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:** Este borrador de Capa 2 conserva cifras y formulaciones exploratorias previas. La versión oficial y evaluable es [`Documentation/sections/01_introduccion/introduccion.tex`](../introduccion.tex) y [`Documentation/latex/main.pdf`](../../../latex/main.pdf).
+
 Este documento aterriza los marcos metodológicos abstractos (PICOT, FINER, Falsacionismo popperiano y Teoría de Evaluación en Desbalance) a la investigación sobre **clasificación de pobreza en Lima Metropolitana y Callao con la ENAHO**, adaptado estrictamente al **alcance y sílabo del curso de Inteligencia Artificial (1INF24 - PUCP)**.
 
 ---

@@ -1,5 +1,8 @@
 # Metodología Aplicada: Formulación de Objetivos del Proyecto
 
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:** Este borrador de Capa 2 conserva cifras y formulaciones exploratorias previas. La versión oficial y evaluable es [`Documentation/sections/01_introduccion/introduccion.tex`](../introduccion.tex) y [`Documentation/latex/main.pdf`](../../../latex/main.pdf).
+
 Este documento aterriza los marcos metodológicos abstractos (SMART, Taxonomía de Bloom, Coherencia Espejo del Marco Lógico y CRISP-DM) al proyecto de **clasificación supervisada de pobreza urbana en Lima Metropolitana y Callao utilizando microdatos de la ENAHO**, adaptado a la **rúbrica y alcance del curso de Inteligencia Artificial (1INF24 - PUCP)**.
 
 ---

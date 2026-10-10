@@ -1,6 +1,11 @@
 # Sección 3: Metodología
 
-## 1. Desmitificación Empírica: ¿Por Qué la Pobreza No es un Árbol Simple de Materiales?
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:**  
+> Este documento Markdown corresponde a un borrador exploratorio temprano basado en la muestra departamental previa (5,571 hogares).  
+> La versión oficial, rigurosa y evaluable para la entrega parcial es el código $\text{\LaTeX}$ en [`metodologia.tex`](./metodologia.tex) y [`Documentation/latex/main.pdf`](../../latex/main.pdf), delimitada a Lima Metropolitana (`DOMINIO 8`, 4,090 hogares 2024 / 4,129 en 2025), línea oficial de S/ 559.20, purga de 930 hogares panel, 28 variables observables y las 8 adaptaciones formales de la Tabla 2. Ver [`log_cambios_2026-10-08_21-04.md`](../../Observaciones%20a%20levantar/log_cambios_2026-10-08_21-04.md).
+
+---
 
 Durante la exploración inicial se planteó una interrogante crítica:  
 *¿Podría este problema degenerar en un árbol de decisión trivial de 2 o 3 reglas (ejemplo: si la pared es de madera o estera, entonces el hogar es pobre)?*

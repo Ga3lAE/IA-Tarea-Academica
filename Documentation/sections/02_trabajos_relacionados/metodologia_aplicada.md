@@ -1,5 +1,8 @@
 # Metodología Aplicada: Benchmark y Selección de Literatura Científica
 
+> [!WARNING]
+> **AVISO DE VERSIÓN Y DEPRECACIÓN:** Este borrador de Capa 2 conserva cifras y benchmarks exploratorios previos. La versión oficial y evaluable es [`Documentation/sections/02_trabajos_relacionados/trabajos_relacionados.tex`](../trabajos_relacionados.tex) y [`Documentation/latex/main.pdf`](../../latex/main.pdf).
+
 Este documento aplica los marcos metodológicos abstractos (protocolo de revisión sistemática, tipología de fuentes, matriz de contribución dual y principio de parsimonia) al proyecto de **clasificación de pobreza en Lima Metropolitana y Callao con la ENAHO**, adaptado a los requerimientos del curso de **Inteligencia Artificial (1INF24 - PUCP)**.
 
 ---

@@ -2,13 +2,13 @@
 
 \subsection{Enfoque propuesto}
 
-\textbf{Formalización del problema.} Siguiendo a Mitchell \cite{mitchell1997machine}, se define la terna $\langle T, E, P \rangle$. La \textbf{tarea} $T$ es inducir $f:\mathcal{X}\rightarrow\{0,1\}$ que asigne a cada hogar $i$ la etiqueta $y_i = \mathbb{I}(\texttt{POBREZA}_i \in \{1,2\})$, es decir, pobreza extrema o no extrema según el Módulo 34 (Sumaria) del INEI. La \textbf{experiencia} $E$ es la ENAHO 2024 de \texttt{DOMINIO = 8}: $N = 4{,}090$ hogares, de los cuales 774 son pobres (18.92\%), con razón de desbalance $\gamma \approx 4.28$. La prueba fuera de tiempo es la ENAHO 2025 sin los hogares panel: 3,199 hogares (17.4\% pobres). La \textbf{medida de desempeño} $P$ incluye la PR-AUC, el error de exclusión $\mathrm{EE} = FN/(TP+FN)$ y el de inclusión $\mathrm{IE} = FP/(TP+FP)$ con cobertura fija $B$, la exhaustividad, la precisión y el puntaje de Brier tras recalibrar las probabilidades. Los clasificadores minimizan una pérdida logística sensible al costo:
+\textbf{Formalización del problema.} Siguiendo a Mitchell \cite{mitchell1997machine}, se define la terna $\langle T, E, P \rangle$. La \textbf{tarea} $T$ es inducir $f:\mathcal{X}\rightarrow\{0,1\}$ que asigne a cada hogar $i$ la etiqueta $y_i = \mathbb{I}(\texttt{POBREZA}_i \in \{1,2\})$, es decir, condición de pobreza extrema (código 1) o no extrema (código 2), agrupadas como pobreza monetaria total frente a no pobre (código 3), según el Módulo 34 (Sumaria) del INEI. La \textbf{experiencia} $E$ es la ENAHO 2024 de \texttt{DOMINIO = 8}: $N = 4{,}090$ hogares, de los cuales 774 son pobres (18.92\%), con razón de desbalance $\gamma \approx 4.28$. La prueba fuera de tiempo es la ENAHO 2025 sin los hogares panel: 3,199 hogares (17.4\% pobres). La \textbf{medida de desempeño} $P$ incluye la PR-AUC, el error de exclusión $\mathrm{EE} = FN/(TP+FN)$ y el de inclusión $\mathrm{IE} = FP/(TP+FP)$ con cobertura fija $B$, la exhaustividad, la precisión y el puntaje de Brier tras recalibrar las probabilidades. Los clasificadores minimizan una pérdida logística sensible al costo:
 \begin{equation}
 \mathcal{L}(\theta) = -\frac{1}{N}\sum_{i=1}^{N}\bigl[\alpha\, y_i \ln \hat{p}_i + (1-y_i)\ln(1-\hat{p}_i)\bigr] + \lambda\,\Omega(\theta),
 \end{equation}
 donde $\hat{p}_i = P(y_i = 1 \mid \mathbf{x}_i;\theta)$, $\Omega$ es la regularización y $\alpha \in \{1, 2, \gamma\}$ es un hiperparámetro elegido por validación ($\gamma$ es un cociente de frecuencias, no un costo social). Como reponderar equivale a desplazar el umbral de un modelo sin costos a $p^* = 1/(1+\alpha)$ \cite{elkan2001foundations}, no se aplican ambas correcciones a la vez.
 
-\textbf{Comportamiento entrada/salida.} La entrada es $\mathbf{x}_i = [\mathbf{x}_i^{(\text{viv})}, \mathbf{x}_i^{(\text{dem})}, \mathbf{x}_i^{(\text{edu})}, \mathbf{x}_i^{(\text{emp})}]$, con unas 30 variables:
+\textbf{Comportamiento entrada/salida.} La entrada es $\mathbf{x}_i = [\mathbf{x}_i^{(\text{viv})}, \mathbf{x}_i^{(\text{dem})}, \mathbf{x}_i^{(\text{edu})}, \mathbf{x}_i^{(\text{emp})}]$, con 28 variables observables:
 \begin{itemize}
     \item Vivienda (Módulo 01): materiales, habitaciones, tenencia, agua, desagüe, combustible e internet.
     \item Demografía (Módulo 02): tamaño, menores, adultos mayores y dependencia; sexo y edad del jefe.
@@ -17,7 +17,7 @@ donde $\hat{p}_i = P(y_i = 1 \mid \mathbf{x}_i;\theta)$, $\Omega$ es la regulari
 \end{itemize}
 Ninguna variable de ingreso o gasto entra en $\mathbf{x}_i$; el gasto solo es la variable dependiente de la línea base. La salida es un puntaje por hogar ($\hat{p}_i$, o el gasto predicho con signo invertido en la línea base). La decisión selecciona al 20\% de hogares con mayor puntaje, que es la comparación principal, o usa un umbral $\tau$ fijado en la validación de 2024 y congelado para 2025 (H3).
 
-\textbf{Operadores y adaptaciones al problema.} La Figura~\ref{fig:pipeline} muestra el flujo y la Tabla~\ref{tab:adaptaciones} su sustento en la literatura.
+\textbf{Operadores y adaptaciones al problema.} La Figura~\ref{fig:pipeline} muestra el flujo y la Tabla~\ref{tab:adaptaciones} el sustento en la literatura. Las adaptaciones 1--3 son decisiones de ingeniería de datos motivadas por la jerarquía censal de la ENAHO (vivienda $\rightarrow$ hogar $\rightarrow$ individuo; la agregación $\Phi$ sigue las recomendaciones de diseño de registros de Grosh et al. \cite{grosh2022revisiting}), mientras que las adaptaciones 4--8 son formulaciones algorítmicas sustentadas en la literatura:
 \begin{enumerate}
     \item \textit{Imputación intra-vivienda.} En 2024, 72 hogares secundarios (1.76\%) que comparten vivienda con el hogar principal no tienen datos físicos (paredes, pisos, habitaciones). Los heredan de su vivienda $(\texttt{CONGLOME}, \texttt{VIVIENDA})$ mediante relleno hacia adelante y atrás restringido a cada grupo, sin imputar valores globales.
     \item \textit{Agregación individuo$\rightarrow$hogar.} Un operador $\Phi$ toma las personas $j$ del hogar $i$ y produce dos ramas: los atributos del jefe ($P203 = 1$) y funcionales del hogar, por ejemplo $\text{dep}_i = \sum_j \mathbb{I}(e_j<15 \lor e_j \ge 65) / \max\bigl(1, \sum_j \mathbb{I}(15 \le e_j < 65)\bigr)$, donde $e_j$ es la edad de la persona $j$. Se agregan el máximo nivel educativo, la proporción de ocupados y las personas por habitación.
@@ -28,7 +28,7 @@ Ninguna variable de ingreso o gasto entra en $\mathbf{x}_i$; el gasto solo es la
     \item \textit{Inferencia.} Las diferencias entre modelos (H1, H2, H4) se estiman con intervalos de confianza por \textit{bootstrap} de conglomerados (1,000 réplicas), en lugar de la prueba de McNemar, que no compara PR-AUC ni F1.
     \item \textit{Interpretabilidad.} TreeSHAP \cite{lundberg2020local} descompone el puntaje de cada hogar en contribuciones aditivas, $f(\mathbf{x}_i) = \phi_0 + \sum_{j=1}^{d}\phi_j(\mathbf{x}_i)$. Así se verifica que las variables más influyentes sean coherentes con la literatura y se detecta cualquier variable que filtre información del gasto.
 \end{enumerate}
-Un chequeo preliminar con 28 variables, cuyo script está en el repositorio, dio $\mathrm{EE} \approx 0.41$ con $B = 20$\% para la línea base, la regresión logística y el \textit{random forest}. Esto motiva formular H2 como una prueba de equivalencia. Las métricas se reportan por hogar y, como robustez, ponderadas por personas (\texttt{FACTOR07} $\times$ miembros).
+Un chequeo preliminar con las 28 variables descritas, cuyo script está en el repositorio, dio $\mathrm{EE} \approx 0.41$ con $B = 20$\% para la línea base, la regresión logística y el \textit{random forest}. Esto motiva formular H2 como una prueba de equivalencia. Las métricas se reportan por hogar y, como robustez, ponderadas por personas (\texttt{FACTOR07} $\times$ miembros).
 
 \begin{table}[htbp]
 \centering
@@ -40,6 +40,8 @@ Un chequeo preliminar con 28 variables, cuyo script está en el repositorio, dio
 \toprule
 \textbf{Adaptación} & \textbf{Cómo se aplica} & \textbf{Sustento} \\
 \midrule
+Agregación del hogar ($\Phi$) & Resumen de jefatura y carga & \cite{grosh2022revisiting} \\
+\addlinespace[2pt]
 Línea base PMT-MCO & $\ln(\text{gasto})$ con corte en la línea & \cite{brown2018poor,mcbride2018retooling} \\
 \addlinespace[2pt]
 Pérdida sensible al costo & $\alpha$ como hiperparámetro; sin doble corrección del umbral & \cite{elkan2001foundations} \\
