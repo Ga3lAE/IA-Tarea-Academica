@@ -27,28 +27,37 @@ flowchart TD
     M3 -->|Traspaso tipográfico| M4
 ```
 
+> [!IMPORTANT]
+> **FUENTE OFICIAL DE LA VERDAD Y EVALUACIÓN:**  
+> La versión definitiva, consolidada y evaluable para la entrega de la Tarea Académica reside **exclusivamente en la Capa 4** ([`Documentation/latex/main.tex`](./latex/main.tex) y [`main.pdf`](./latex/main.pdf)) junto con [`Observaciones a levantar/log_cambios_2026-10-08_21-04.md`](./Observaciones%20a%20levantar/log_cambios_2026-10-08_21-04.md). Los borradores intermedios en Markdown de las Capas 1 a 3 contienen cifras preliminares exploratorias y han quedado superados.
+>
+> **Descarga de Microdatos con Git LFS:**  
+> Los archivos CSV de la ENAHO en `Data/` están gestionados mediante **Git LFS**. Para descargarlos antes de ejecutar cualquier script:
+> ```bash
+> git lfs install
+> git lfs pull
+> ```
+
 ---
 
 ## 1. La Arquitectura en 4 Capas
 
 ### Capa 1: Metodología Teórica (`<subpunto>/metodologia.md`)
 * **Propósito:** Definir formalmente la herramienta analítica, el marco conceptual o el algoritmo utilizado desde una perspectiva puramente abstracta.
-* **Regla Estricta:** **No debe mencionar el caso de estudio específico.** No habla de Lima, de la ENAHO ni de la pobreza. Explica la técnica como si fuera un libro de texto (ej. qué es el marco 5Ws+1H, qué es un Árbol de Problemas según CEPAL/BID, qué es la Matriz de Error Social de Coady o qué es la Teoría del Ingreso Permanente de Friedman).
-* **Beneficio:** Permite validar si la técnica elegida es metodológicamente sólida e independiente de los datos.
+* **Estado:** Borradores teóricos exploratorios iniciales.
 
 ### Capa 2: Metodología Aplicada (`<subpunto>/metodologia_aplicada.md`)
-* **Propósito:** Aplicar de forma exhaustiva, minuciosa y con datos exactos la metodología de la Capa 1 al problema del proyecto.
-* **Contenido:** Tablas completas, cifras oficiales verificadas (INEI, GRADE, IEP, CEPAL), matrices de confusión social reales, diagramas causales detallados y delimitaciones estrictas de lo que se aborda y lo que no.
-* **Regla Estricta:** Es la **fuente de la verdad empírica** del proyecto. Si una cifra o argumento se cuestiona, aquí reside su demostración y cálculo auditable.
+* **Propósito:** Aplicación preliminar de la metodología al caso de estudio.
+* **Estado:** *Superada.* Los borradores `.md` tempranos conservan delimitaciones previas (alcance departamental de 5,571 hogares). La delimitación oficial y rigurosa es Lima Metropolitana (`DOMINIO 8`, 4,090 hogares), consolidada en la Capa 4.
 
 ### Capa 3: Síntesis Centralizada de Sección (`<seccion>/<seccion>.md`)
-* **Propósito:** Condensar y articular de manera ejecutiva los documentos de las capas 1 y 2 que componen una sección del informe oficial (ej. `introduccion.md`, `trabajos_relacionados.md`, `metodologia.md`).
-* **Contenido:** Redacción académica formal, con fluidez narrativa, citas integradas y longitud calibrada para ajustarse al presupuesto de páginas exigido por la PUCP.
+* **Propósito:** Resúmenes ejecutivos en Markdown de cada sección.
+* **Estado:** Borradores de trabajo intermedios.
 
 ### Capa 4: Publicación en $\text{\LaTeX}$ (`<seccion>/<seccion>.tex` $\to$ `latex/main.pdf`)
-* **Propósito:** Generar el entregable final en PDF listo para evaluación docente.
+* **Propósito:** **Entregable oficial único y evaluable** presentado a la cátedra de Inteligencia Artificial (1INF24).
 * **Implementación:** Archivo `.tex` modular por sección importado en `Documentation/latex/main.tex` mediante `\input{../sections/...}`.
-* **Estándar Visual:** Tipografía Montserrat oficial, paleta de colores institucional PUCP (`#015D34` verde bosque, `#009A74` verde esmeralda, `#40B497` menta), tablas en `booktabs` y formato a doble columna.
+* **Estándar Visual:** Tipografía Montserrat oficial, paleta de colores institucional PUCP (`#015D34` verde bosque, `#009A74` verde esmeralda, `#40B497` menta), tablas en `booktabs`, control estricto de 4 páginas de cuerpo sin bibliografía y 0 errores de compilación.
 
 ---
 
