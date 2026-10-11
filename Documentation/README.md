@@ -29,7 +29,7 @@ flowchart TD
 
 > [!IMPORTANT]
 > **FUENTE OFICIAL DE LA VERDAD Y EVALUACIÓN:**  
-> La versión definitiva, consolidada y evaluable para la entrega de la Tarea Académica reside **exclusivamente en la Capa 4** ([`Documentation/latex/main.tex`](./latex/main.tex) y [`main.pdf`](./latex/main.pdf)) junto con [`Observaciones a levantar/log_cambios_2026-10-08_21-04.md`](./Observaciones%20a%20levantar/log_cambios_2026-10-08_21-04.md). Los borradores intermedios en Markdown de las Capas 1 a 3 contienen cifras preliminares exploratorias y han quedado superados.
+> La versión definitiva, consolidada y evaluable para la entrega de la Tarea Académica reside **exclusivamente en la Capa 4** ([`Documentation/latex/main.tex`](./latex/main.tex) y [`main.pdf`](./latex/main.pdf)) junto con [`Observaciones a levantar/log_cambios_2026-10-11_18-05.md`](./Observaciones%20a%20levantar/log_cambios_2026-10-11_18-05.md). Los borradores intermedios en Markdown de las Capas 1 a 3 contienen cifras preliminares exploratorias y han quedado superados.
 >
 > **Descarga de Microdatos con Git LFS:**  
 > Los archivos CSV de la ENAHO en `Data/` están gestionados mediante **Git LFS**. Para descargarlos antes de ejecutar cualquier script:
