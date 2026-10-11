@@ -17,49 +17,7 @@ donde $\hat{p}_i = P(y_i = 1 \mid \mathbf{x}_i;\theta)$, $\Omega$ es la regulari
 \end{itemize}
 Ninguna variable de ingreso o gasto entra en $\mathbf{x}_i$; el gasto solo es la variable dependiente de la línea base. La salida es un puntaje por hogar ($\hat{p}_i$, o el gasto predicho con signo invertido en la línea base). La decisión selecciona al 20\% de hogares con mayor puntaje, que es la comparación principal, o usa un umbral $\tau$ fijado en la validación de 2024 y congelado para 2025 (H3).
 
-\textbf{Operadores y adaptaciones al problema.} La Figura~\ref{fig:pipeline} muestra el flujo y la Tabla~\ref{tab:adaptaciones} el sustento en la literatura. Las adaptaciones 1--3 son decisiones de ingeniería de datos motivadas por la jerarquía censal de la ENAHO (vivienda $\rightarrow$ hogar $\rightarrow$ individuo; la agregación $\Phi$ sigue las recomendaciones de diseño de registros de Grosh et al. \cite{grosh2022revisiting}), mientras que las adaptaciones 4--8 son formulaciones algorítmicas sustentadas en la literatura:
-\begin{enumerate}
-    \item \textit{Imputación intra-vivienda.} En 2024, 72 hogares secundarios (1.76\%) que comparten vivienda con el hogar principal no tienen datos físicos (paredes, pisos, habitaciones). Los heredan de su vivienda $(\texttt{CONGLOME}, \texttt{VIVIENDA})$ mediante relleno hacia adelante y atrás restringido a cada grupo, sin imputar valores globales.
-    \item \textit{Agregación individuo$\rightarrow$hogar.} Un operador $\Phi$ toma las personas $j$ del hogar $i$ y produce dos ramas: los atributos del jefe ($P203 = 1$) y funcionales del hogar, por ejemplo $\text{dep}_i = \sum_j \mathbb{I}(e_j<15 \lor e_j \ge 65) / \max\bigl(1, \sum_j \mathbb{I}(15 \le e_j < 65)\bigr)$, donde $e_j$ es la edad de la persona $j$. Se agregan el máximo nivel educativo, la proporción de ocupados y las personas por habitación.
-    \item \textit{Agrupación de categorías raras ajustada solo en entrenamiento.} Las categorías con menos de 1\% se fusionan por afinidad. En pisos (2024): acabado noble 49.8\% de los hogares (pobreza 8.2\%), cemento 46.0\% (28.9\%) y precario 4.2\% (37.2\%). Las tasas se calculan solo con 2024 para evitar fuga de la etiqueta.
-    \item \textit{Línea base econométrica.} PMT por mínimos cuadrados: $\ln(\text{gasto}_i) = \mathbf{w}^{\top}\mathbf{x}_i + \varepsilon_i$, con $\hat{y}_i = \mathbb{I}\bigl(\widehat{\ln \text{gasto}_i} < \ln \text{LINEA}\bigr)$. Se compara con una regresión logística ElasticNet, un \textit{random forest} y LightGBM \cite{ke2017lightgbm}, cuyos hiperparámetros se eligen por validación agrupada.
-    \item \textit{Comparación a igual cobertura.} Todos los modelos seleccionan la misma proporción $B = 20$\% de hogares, y se trazan curvas exclusión-inclusión para $B$ entre 10\% y 40\%. Así se aísla el aporte del modelo de la elección del umbral.
-    \item \textit{Protocolo contra la fuga de información.} (a) Se excluyen del test los 930 hogares de 2025 que también fueron encuestados en 2024. (b) La validación interna usa \texttt{GroupKFold} de 5 particiones por conglomerado, porque 702 de los 704 conglomerados se repiten entre años. (c) Codificación, escalamiento y agrupación de categorías se ajustan dentro de un \texttt{Pipeline} solo con datos de entrenamiento.
-    \item \textit{Inferencia.} Las diferencias entre modelos (H1, H2, H4) se estiman con intervalos de confianza por \textit{bootstrap} de conglomerados (1,000 réplicas), en lugar de la prueba de McNemar, que no compara PR-AUC ni F1.
-    \item \textit{Interpretabilidad.} TreeSHAP \cite{lundberg2020local} descompone el puntaje de cada hogar en contribuciones aditivas, $f(\mathbf{x}_i) = \phi_0 + \sum_{j=1}^{d}\phi_j(\mathbf{x}_i)$. Así se verifica que las variables más influyentes sean coherentes con la literatura y se detecta cualquier variable que filtre información del gasto.
-\end{enumerate}
-Un chequeo preliminar con las 28 variables descritas, cuyo script está en el repositorio, dio $\mathrm{EE} \approx 0.41$ con $B = 20$\% para la línea base, la regresión logística y el \textit{random forest}. Esto motiva formular H2 como una prueba de equivalencia. Las métricas se reportan por hogar y, como robustez, ponderadas por personas (\texttt{FACTOR07} $\times$ miembros).
-
-\begin{table}[htbp]
-\centering
-\caption{Adaptaciones del enfoque y publicación que las sustenta.}
-\label{tab:adaptaciones}
-\fontsize{6.8}{8.2}\selectfont
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{L{2.5cm}L{3.1cm}L{1.4cm}}
-\toprule
-\textbf{Adaptación} & \textbf{Cómo se aplica} & \textbf{Sustento} \\
-\midrule
-Agregación del hogar ($\Phi$) & Resumen de jefatura y carga & \cite{grosh2022revisiting} \\
-\addlinespace[2pt]
-Línea base PMT-MCO & $\ln(\text{gasto})$ con corte en la línea & \cite{brown2018poor,mcbride2018retooling} \\
-\addlinespace[2pt]
-Pérdida sensible al costo & $\alpha$ como hiperparámetro; sin doble corrección del umbral & \cite{elkan2001foundations} \\
-\addlinespace[2pt]
-Igual cobertura y curva EE-IE & Selección de 20\% de hogares & \cite{noriega2020algorithmic} \\
-\addlinespace[2pt]
-Prueba fuera de tiempo sin panel & Entrenar 2024, evaluar 2025 sin 930 hogares & \cite{aiken2023moving} \\
-\addlinespace[2pt]
-Validación agrupada & \texttt{GroupKFold} por conglomerado & \cite{roberts2017cross} \\
-\addlinespace[2pt]
-Ensambles de árboles & \textit{Random forest} y LightGBM & \cite{grinsztajn2022tree,ke2017lightgbm} \\
-\addlinespace[2pt]
-Interpretabilidad & TreeSHAP por hogar & \cite{lundberg2020local} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
+\begin{figure}[t]
 \centering
 \begin{tikzpicture}[
     basebox/.style={rectangle, rounded corners=2.5pt, line width=0.7pt, inner sep=3pt,
@@ -81,7 +39,7 @@ Interpretabilidad & TreeSHAP por hogar & \cite{lundberg2020local} \\
 };
 \node[boxteal, below=4pt of preproc] (modelado) {
     \textbf{\color{secondaryteal}3. Modelos}\\
-    $\bullet$ Línea base PMT-MCO sobre $\ln(\text{gasto})$; logística ElasticNet.\\
+    $\bullet$ Línea base PMT-MCO sobre $\ln(\text{gasto})$; logística ElasticNet; CART.\\
     $\bullet$ \textit{Random forest} y LightGBM con pérdida sensible al costo ($\alpha$).
 };
 \node[boxgray, below=4pt of modelado] (validacion) {
@@ -97,3 +55,45 @@ Interpretabilidad & TreeSHAP por hogar & \cite{lundberg2020local} \\
 \caption{Flujo metodológico. $y_i$: pobreza oficial del hogar; $\Phi$: agregación de personas a hogar; $\alpha$: peso de la clase pobre en la pérdida; $\tau$: umbral de decisión; $B$: proporción de hogares seleccionados; EE e IE: errores de exclusión e inclusión.}
 \label{fig:pipeline}
 \end{figure}
+
+\textbf{Operadores y adaptaciones al problema.} La Figura~\ref{fig:pipeline} muestra el flujo y la Tabla~\ref{tab:adaptaciones} el sustento en la literatura. Las adaptaciones 1--3 son decisiones de ingeniería de datos motivadas por la jerarquía de la ENAHO (vivienda $\rightarrow$ hogar $\rightarrow$ individuo). La agregación $\Phi$ construye las variables típicas de un PMT, como las características del jefe y la composición del hogar \cite{grosh2022revisiting}. Las adaptaciones 4--8 son formulaciones algorítmicas sustentadas en la literatura:
+\begin{enumerate}
+    \item \textit{Imputación intra-vivienda.} En 2024, 72 hogares secundarios (1.76\%) que comparten vivienda con el hogar principal no tienen datos físicos (paredes, pisos, habitaciones). Los heredan de su vivienda $(\texttt{CONGLOME}, \texttt{VIVIENDA})$ mediante relleno hacia adelante y atrás restringido a cada grupo, sin imputar valores globales.
+    \item \textit{Agregación individuo$\rightarrow$hogar.} Un operador $\Phi$ toma las personas $j$ del hogar $i$ y produce dos ramas: los atributos del jefe ($P203 = 1$) y funcionales del hogar, por ejemplo $\text{dep}_i = \sum_j \mathbb{I}(e_j<15 \lor e_j \ge 65) / \max\bigl(1, \sum_j \mathbb{I}(15 \le e_j < 65)\bigr)$, donde $e_j$ es la edad de la persona $j$. Se agregan el máximo nivel educativo, la proporción de ocupados y las personas por habitación.
+    \item \textit{Agrupación de categorías raras ajustada solo en entrenamiento.} Las categorías con menos de 1\% se fusionan por afinidad. En pisos (2024): acabado noble 49.8\% de los hogares (pobreza 8.2\%), cemento 46.0\% (28.9\%) y precario 4.2\% (37.2\%). Las tasas se calculan solo con 2024 para evitar fuga de la etiqueta.
+    \item \textit{Línea base econométrica.} PMT por mínimos cuadrados: $\ln(\text{gasto}_i) = \mathbf{w}^{\top}\mathbf{x}_i + \varepsilon_i$, con $\hat{y}_i = \mathbb{I}\bigl(\widehat{\ln \text{gasto}_i} < \ln \text{LINEA}\bigr)$. Se compara con los modelos de clasificación del curso (regresión logística ElasticNet y árbol de clasificación CART con poda por costo-complejidad) y con dos ensambles, un \textit{random forest} y LightGBM \cite{ke2017lightgbm}. Los hiperparámetros de todos se eligen por validación agrupada.
+    \item \textit{Comparación a igual cobertura.} Todos los modelos seleccionan la misma proporción $B = 20$\% de hogares, y se trazan curvas exclusión-inclusión para $B$ entre 10\% y 40\%. Así se aísla el aporte del modelo de la elección del umbral.
+    \item \textit{Protocolo contra la fuga de información.} (a) Se excluyen del test los 930 hogares de 2025 que también fueron encuestados en 2024. (b) La validación interna usa \texttt{GroupKFold} de 5 particiones por conglomerado, porque 702 de los 704 conglomerados se repiten entre años. (c) Codificación, escalamiento y agrupación de categorías se ajustan dentro de un \texttt{Pipeline} solo con datos de entrenamiento.
+    \item \textit{Inferencia.} Las diferencias entre modelos (H1, H2, H4) se estiman con intervalos de confianza por \textit{bootstrap} de conglomerados (1,000 réplicas), en lugar de la prueba de McNemar, que no compara PR-AUC ni F1.
+    \item \textit{Interpretabilidad.} TreeSHAP \cite{lundberg2020local} descompone el puntaje de cada hogar en contribuciones aditivas, $f(\mathbf{x}_i) = \phi_0 + \sum_{j=1}^{d}\phi_j(\mathbf{x}_i)$. Así se verifica que las variables más influyentes sean coherentes con la literatura y se detecta cualquier variable que filtre información del gasto.
+\end{enumerate}
+Un chequeo preliminar con las 28 variables descritas y validación agrupada en 2024, cuyo código está en la bitácora del repositorio, dio un EE de 0.43 a 0.44 con $B = 20$\% para la línea base, la regresión logística y el \textit{random forest}. Las diferencias entre modelos quedaron dentro de $\pm$0.035, lo que motiva formular H2 como una prueba de equivalencia. Las métricas se reportan por hogar y, como robustez, ponderadas por personas (\texttt{FACTOR07} $\times$ miembros).
+
+\begin{table}[htbp]
+\centering
+\caption{Adaptaciones del enfoque y publicación que las sustenta.}
+\label{tab:adaptaciones}
+\fontsize{6.8}{8.2}\selectfont
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{L{2.5cm}L{3.1cm}L{1.4cm}}
+\toprule
+\textbf{Adaptación} & \textbf{Cómo se aplica} & \textbf{Sustento} \\
+\midrule
+Agregación del hogar ($\Phi$) & Variables de jefatura y composición del hogar & \cite{grosh2022revisiting} \\
+\addlinespace[2pt]
+Línea base PMT-MCO & $\ln(\text{gasto})$ con corte en la línea & \cite{brown2018poor,mcbride2018retooling} \\
+\addlinespace[2pt]
+Pérdida sensible al costo & $\alpha$ como hiperparámetro; sin doble corrección del umbral & \cite{elkan2001foundations} \\
+\addlinespace[2pt]
+Igual cobertura y curva EE-IE & Selección de 20\% de hogares & \cite{noriega2020algorithmic} \\
+\addlinespace[2pt]
+Prueba fuera de tiempo sin panel & Entrenar 2024, evaluar 2025 sin 930 hogares & \cite{aiken2023moving} \\
+\addlinespace[2pt]
+Validación agrupada & \texttt{GroupKFold} por conglomerado & \cite{roberts2017cross} \\
+\addlinespace[2pt]
+Ensambles de árboles & \textit{Random forest} y LightGBM & \cite{grinsztajn2022tree,ke2017lightgbm} \\
+\addlinespace[2pt]
+Interpretabilidad & TreeSHAP por hogar & \cite{lundberg2020local} \\
+\bottomrule
+\end{tabular}
+\end{table}
