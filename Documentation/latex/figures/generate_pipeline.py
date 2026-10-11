@@ -151,8 +151,8 @@ def create_pipeline_diagram():
     ax.add_patch(arr3)
 
     plt.tight_layout()
-    plt.savefig('Documentation/latex/figures/pipeline_architecture.pdf', format='pdf', bbox_inches='tight')
-    plt.savefig('Documentation/latex/figures/pipeline_architecture.png', format='png', dpi=300, bbox_inches='tight')
+    plt.savefig('pipeline_architecture.pdf', format='pdf', bbox_inches='tight')
+    plt.savefig('pipeline_architecture.png', format='png', dpi=300, bbox_inches='tight')
     plt.close()
     print("Figure 1 generated successfully: PDF and PNG.")
 
