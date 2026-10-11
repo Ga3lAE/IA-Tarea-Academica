@@ -17,16 +17,19 @@ flowchart TD
     subgraph Historial["Iteraciones Registradas"]
         I1["Iteración 2026-10-08_20-03 [ARCHIVADA]\n(Diagnóstico inicial, bugs de datos y 4 papers núcleo)"]
         I2["Iteración 2026-10-08_20-30 [SUPERADA CON ERRATAS]\n(Borrador intermedio con erratas bibliográficas y empíricas)"]
-        I3["Consolidado Vigente 2026-10-08_21-04 [ACTIVA]\n(log_cambios_2026-10-08_21-04.md + LaTeX consolidado)"]
+        I3["Iteración 2026-10-08_21-04 [SUPERADA]\n(Consolidado inicial de correcciones y alcance DOMINIO 8)"]
+        I4["Iteración 2026-10-11_12-41 [SUPERADA]\n(Alineación con sílabo U2, CART, nombres completos y cita de IA)"]
+        I5["Iteración 2026-10-11_16-35 [SUPERADA]\n(Cotejo Guía PUCP 2015, sincronización .bbl y script cv2024.py)"]
+        I6["Consolidado Vigente 2026-10-11_18-05 [ACTIVA / OFICIAL]\n(log_cambios_2026-10-11_18-05.md + 10 refs clave + I formalizada)"]
     end
 
     R -->|Gobierna| Historial
-    I3 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(Versión oficial y evaluable)"]
+    I6 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(Versión oficial y evaluable)"]
 ```
 
 > [!CAUTION]
 > **ESTADO DE LAS VERSIONES EN ESTA CARPETA:**
-> * **Versión Oficial Vigente:** [`log_cambios_2026-10-08_21-04.md`](./log_cambios_2026-10-08_21-04.md) y los archivos $\text{\LaTeX}$ en [`Documentation/latex/`](../latex/). Todas sus cifras y fuentes están verificadas con los microdatos.
+> * **Versión Oficial Vigente:** [`log_cambios_2026-10-11_18-05.md`](./log_cambios_2026-10-11_18-05.md) y los archivos $\text{\LaTeX}$ en [`Documentation/latex/`](../latex/). Poda a 10 referencias de alto impacto, formalización de la función indicatriz $\mathbb{I}$, armonización de H2 a $\pm 0.035$ y 4 páginas exactas.
 > * **Versión Superada:** Los archivos con sufijo `_2026-10-08_20-30.md` en esta carpeta corresponden a un borrador intermedio que **contiene erratas factuales** (ver §3). **NO deben utilizarse como fuente de la verdad.**
 
 ---
@@ -35,7 +38,10 @@ flowchart TD
 
 | Iteración | Timestamp | Estado | Calificación Proyectada | Alcance Principal y Veredicto |
 | :---: | :---: | :---: | :---: | :--- |
-| **Consolidado Vigente** | **[`2026-10-08_21-04`](./log_cambios_2026-10-08_21-04.md)** | **ACTIVA / OFICIAL** | **19.0 – 20.0 / 20** | **Versión definitiva implementada en el informe y código.** Corrige todas las erratas de la Ronda 2, unifica el alcance a Lima Metropolitana (`DOMINIO 8`, 4,090 hogares 2024 / 4,129 en 2025), línea oficial de S/ 559.20, 14 papers verificados con DOI, H1–H4 con respaldo empírico en scripts y 4 páginas exactas. |
+| **Consolidado Vigente** | **[`2026-10-11_18-05`](./log_cambios_2026-10-11_18-05.md)** | **ACTIVA / OFICIAL** | **20.0 / 20** | **Versión definitiva de entrega.** Poda bibliográfica a 10 referencias canónicas (supera mínimo de 3), símbolo indicatriz $\mathbb{I}$ definido, pregunta de investigación fluida, 0 errores, 4 páginas exactas. |
+| **Ronda 5 (Cotejo PUCP)** | [`2026-10-11_16-35`](./log_cambios_2026-10-11_16-35.md) | Superada | 19.5 – 20.0 / 20 | Cotejo formal con Guía PUCP 2015, script `cv2024.py` en repositorio, H2 unificada a $\pm 0.035$. |
+| **Ronda 4 (Alineación Sílabo)** | [`2026-10-11_12-41`](./log_cambios_2026-10-11_12-41.md) | Superada | 18.5 – 19.5 / 20 | Integró contenidos de la Unidad 2 del sílabo (T2, T3, T4), agregó árbol CART, nombres completos y códigos de los 4 integrantes, citas de Claude y ChatGPT. Desbordaba a 5 páginas por 2 referencias. |
+| **Ronda 3 (Consolidado ENAHO)** | [`2026-10-08_21-04`](./log_cambios_2026-10-08_21-04.md) | Superada | 18.0 – 19.0 / 20 | Unificó alcance a Lima Metropolitana (`DOMINIO 8`, 4,090 hogares 2024 / 4,129 en 2025), línea oficial de S/ 559.20, 14 papers verificados con DOI. |
 | **Ronda 2 (Intermedia)** | [`2026-10-08_20-30`](./problemas_2026-10-08_20-30.md) | **SUPERADA (con erratas)** | 15.0 – 16.0 / 20 | Propuesta intermedia superada. Aunque aportó mejoras formales (punto decimal, TreeSHAP, tono), **introdujo errores factuales severos** en autores de Aiken 2022, DOI de McBride, cifras de 761 pobres y línea de S/ 446 (ver §3). |
 | **Ronda 1 (Inicial)** | [`2026-10-08_20-03`](./problemas_2026-10-08_20-03.md) | Archivada | 11.0 – 12.0 / 20 | Diagnóstico inicial de 22 observaciones (bugs de código, citas rotas `[?]`, plantillas residuales y fuga de panel). |
 
