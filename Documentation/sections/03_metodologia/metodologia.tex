@@ -89,8 +89,8 @@ La salida es un puntaje continuo $\hat{p}_i$ (o el gasto predicho invertido en l
 \node[boxteal, below=3.5pt of panelpurge] (test2025) {
     \textbf{\color{secondaryteal}3. Evaluación Fuera de Tiempo (Test Limpio 2025)}\\
     $\bullet$ Muestra de test final: $N_{\text{test}} = 3{,}199$ hogares independientes.\\
-    $\bullet$ Tasa de pobreza: 17.40\%; 702 conglomerados evaluados.\\
-    $\bullet$ \textit{Cero fuga temporal y de panel}: generalización out-of-time pura.
+    $\bullet$ Tasa de pobreza: 17.40\%; 601 conglomerados (599 también en 2024).\\
+    $\bullet$ \textit{Sin hogares repetidos}: evaluación fuera de tiempo sobre hogares nuevos.
 };
 \draw[arrow] (train2024) -- (panelpurge);
 \draw[redarrow] (panelpurge) -- (test2025);
@@ -125,9 +125,9 @@ Igual cobertura y curva EE-IE & Selección de 20\% de hogares & \cite{noriega202
 \addlinespace[2pt]
 Prueba fuera de tiempo sin panel & Entrenar 2024, evaluar 2025 sin 930 hogares & \cite{aiken2023moving} \\
 \addlinespace[2pt]
-Validación agrupada & \texttt{GroupKFold} por conglomerado (diseño bietápico) & INEI \cite{inei2025pobreza} \\
+Validación agrupada & \texttt{GroupKFold} por conglomerado & Diseño muestral de la ENAHO \\
 \addlinespace[2pt]
-Ensambles y explicabilidad & \textit{Random forest}, LightGBM y TreeSHAP & \cite{noriega2020algorithmic} \\
+Modelos de aprendizaje automático & \textit{Random forest} y LightGBM frente a modelos lineales & \cite{mcbride2018retooling,noriega2020algorithmic} \\
 \bottomrule
 \end{tabular}
 \end{table}
