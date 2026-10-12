@@ -6,7 +6,7 @@ En Lima Metropolitana, conformada por la Provincia de Lima y la Provincia Consti
 
 Los programas sociales identifican a sus beneficiarios con \textit{Proxy Means Tests} (PMT): puntajes calculados con características observables del hogar, porque medir el gasto de cada familia es inviable a gran escala. Estos instrumentos, calibrados habitualmente con regresiones lineales sobre el gasto, excluyen a una fracción considerable de los hogares pobres \cite{brown2018poor}. En Lima, el 67.2\% de los hogares pobres de la ENAHO 2024 (520 de 774) no registra transferencias monetarias públicas ni donaciones públicas de alimentos. Esta brecha de cobertura no se explica solo por el instrumento de focalización, pero muestra la magnitud del problema. Además, los indicadores clásicos de vivienda pierden poder en la ciudad: el 84.5\% de los hogares tiene paredes de ladrillo, y en ellos la pobreza es de 15.5\%, frente a 40.0\% en viviendas de madera o estera. El material discrimina, pero no basta.
 
-El problema es relevante porque cada hogar pobre no identificado queda fuera de la protección social, y es abordable durante el curso: se dispone de 8,219 hogares etiquetados (ENAHO 2024 y 2025) con datos públicos, ya descargados y parcialmente procesados. Por ello se formula como un problema de \textbf{clasificación binaria supervisada} sobre variables observables de vivienda, composición del hogar, educación y empleo, excluyendo el ingreso y el gasto. Un chequeo preliminar con validación agrupada por conglomerado en la ENAHO 2024 confirma que el problema no es trivial: un modelo solo con vivienda alcanza un área bajo la curva precisión-exhaustividad (PR-AUC) de 0.37, que sube a 0.56 al añadir los otros tres bloques.
+El problema es relevante porque cada hogar pobre no identificado queda fuera de la protección social, y es abordable con datos públicos: se dispone de 8,219 hogares etiquetados (ENAHO 2024 y 2025) con datos públicos, ya descargados y parcialmente procesados. Por ello se formula como un problema de \textbf{clasificación binaria supervisada} sobre variables observables de vivienda, composición del hogar, educación y empleo, excluyendo el ingreso y el gasto. Un chequeo preliminar con validación agrupada por conglomerado en la ENAHO 2024 confirma que el problema no es trivial: un modelo solo con vivienda alcanza un área bajo la curva precisión-exhaustividad (PR-AUC) de 0.37, que sube a 0.56 al añadir los otros tres bloques.
 
 \subsection{Hipótesis y/o pregunta a abordar}
 
@@ -19,7 +19,7 @@ El problema es relevante porque cada hogar pobre no identificado queda fuera de 
     \item \textbf{H4 (estabilidad temporal):} la PR-AUC cae como máximo 0.05 entre la validación de 2024 y la prueba de 2025.
 \end{itemize}
 
-Las metas se fijaron con la validación agrupada de 2024: ganancia de PR-AUC de 0.19, precisión de 0.45 con exhaustividad de 0.70 y errores de exclusión de 0.43 a 0.44 en los tres modelos con $B = 20$\%. La ENAHO 2025 se reserva para la prueba fuera de tiempo del informe final.
+Las metas se fijaron con la validación agrupada de 2024: ganancia de PR-AUC de 0.19, precisión de 0.45 con exhaustividad de 0.70 y errores de exclusión de 0.43 a 0.44 en los tres modelos con $B = 20$\%. La ENAHO 2025 se reserva como conjunto de prueba fuera de tiempo.
 
 \subsection{Objetivos}
 
