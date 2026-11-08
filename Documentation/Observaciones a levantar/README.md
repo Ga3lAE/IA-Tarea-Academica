@@ -22,16 +22,19 @@ flowchart TD
         I5["Iteración 2026-10-11_16-35 [SUPERADA]\n(Cotejo Guía PUCP 2015, sincronización .bbl y script cv2024.py)"]
         I6["Iteración 2026-10-11_18-05 [SUPERADA]\n(Poda a 10 referencias, indicatriz I definida, H2 ±0.035)"]
         I7["Iteración 2026-10-11_18-20 / 19-17 [ENTREGABLE PARCIAL]\n(log_cambios_2026-10-11_19-17.md — Nota obtenida: 19.0 / 20.0)"]
-        I8["Iteración 2026-11-07_23-25 [ACTIVA / EN REMEDIACIÓN]\n(log_cambios_2026-11-07_23-25.md — Observaciones del jurado al Parcial)"]
+        I8["Iteración 2026-11-07_23-25 [SUPERADA]\n(log_cambios_2026-11-07_23-25.md — Observaciones del jurado al Parcial)"]
+        I9["Iteración 2026-11-08_11-45 [SUPERADA]\n(log_cambios_2026-11-08_11-45.md — Sprint 1: Ingesta y lectura de los 5 módulos ENAHO)"]
+        I10["Iteración 2026-11-08_13-15 [SUPERADA]\n(log_cambios_2026-11-08_13-15.md — Unificación en notebook macro y remoción de carpetas redundantes)"]
+        I11["Iteración 2026-11-08_13-25 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-08_13-25.md — Estandarización semántica de columnas según diccionarios INEI)"]
     end
 
     R -->|Gobierna| Historial
-    I8 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
+    I11 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
 ```
 
 > [!CAUTION]
 > **ESTADO DE LAS VERSIONES EN ESTA CARPETA:**
-> * **Versión Oficial Vigente:** [`log_cambios_2026-11-07_23-25.md`](./log_cambios_2026-11-07_23-25.md) (Diagnóstico y plan de levantamiento de las 2 observaciones del jurado al Entregable Parcial, calificado con **19.0 / 20.0**) y [`log_cambios_2026-10-11_19-17.md`](./log_cambios_2026-10-11_19-17.md).
+> * **Versión Oficial Vigente:** [`log_cambios_2026-11-08_13-25.md`](./log_cambios_2026-11-08_13-25.md) (Estandarización de columnas de los 5 módulos a nombres de diccionario INEI) junto a [`log_cambios_2026-11-08_13-15.md`](./log_cambios_2026-11-08_13-15.md).
 > * **Versión Superada:** Los archivos con sufijo `_2026-10-08_20-30.md` en esta carpeta corresponden a un borrador intermedio que **contiene erratas factuales** (ver §3). **NO deben utilizarse como fuente de la verdad.**
 
 ---
@@ -40,7 +43,10 @@ flowchart TD
 
 | Iteración | Timestamp | Estado | Calificación / Proyección | Alcance Principal y Veredicto |
 | :---: | :---: | :---: | :---: | :--- |
-| **Post-Parcial (Jurado)** | **[`2026-11-07_23-25`](./log_cambios_2026-11-07_23-25.md)** | **ACTIVA / OFICIAL** | **19.0 / 20 (Real)** | **Registro de observaciones del Entregable Parcial:** (1) Reemplazar imputación `ffill/bfill` en 72 hogares secundarios por categoría `"desconocido"` en categóricas y mediana del conglomerado (`CONGLOME`) en numéricas; (2) Reactivar sección formal de *Declaración de contribución de cada integrante* en `main.tex`. |
+| **Nombres INEI** | **[`2026-11-08_13-25`](./log_cambios_2026-11-08_13-25.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | **Estandarización semántica de variables:** Renombrado de columnas técnicas (`P10x`, `P20x`, `P30x`, `P50x`, `OCU500`, etc.) a nombres descriptivos en español según los diccionarios oficiales del INEI en `src/io_enaho.py` y `pipeline_completo.ipynb`. |
+| **Unificación Notebook** | [`2026-11-08_13-15`](./log_cambios_2026-11-08_13-15.md) | Superada | 20.0 / 20 (Proy.) | Eliminación de subdirectorios vacíos en `notebooks/` (`01_modulos` a `04_modelado`) y delimitación de `pipeline_completo.ipynb` estrictamente a la ingesta y verificación de datos. |
+| **Sprint 1 (Lectura Módulos)** | [`2026-11-08_11-45`](./log_cambios_2026-11-08_11-45.md) | Superada | 20.0 / 20 (Proy.) | Ingesta y lectura directa, modular y sin sobre-ingeniería de los 5 módulos ENAHO (01, 02, 03, 05, 34) para 2024 y 2025; verificación de llaves primarias y preservación de 72 hogares secundarios. |
+| **Post-Parcial (Jurado)** | [`2026-11-07_23-25`](./log_cambios_2026-11-07_23-25.md) | Superada | 19.0 / 20 (Real) | Registro de observaciones del Entregable Parcial: (1) Reemplazar imputación `ffill/bfill` en 72 hogares secundarios por categoría `"desconocido"` en categóricas y mediana del conglomerado (`CONGLOME`) en numéricas; (2) Reactivar sección formal de *Declaración de contribución de cada integrante* en `main.tex`. |
 | **Pre-Envío Parcial** | [`2026-10-11_19-17`](./log_cambios_2026-10-11_19-17.md) | Entregada | 19.0 / 20 | Verificación final de compilación limpia, ajuste de conglomerados en test 2025 (601 conglomerados, 599 en 2024) y retiro de referencias explícitas al curso. |
 | **Consolidado Parcial** | [`2026-10-11_18-20`](./log_cambios_2026-10-11_18-20.md) | Superada | 20.0 / 20 (Proy.) | 4 nuevos gráficos metodológicos generados, Sección 3 reestructurada en 3 subsecciones fluidas (3.1 E/S, 3.2 Preprocesamiento y anti-fuga, 3.3 Modelos), preservación de outliers, `GroupKFold` espacial, 0 redundancias, 4 páginas exactas. |
 | **Ronda 6 (Poda Bibliográfica)** | [`2026-10-11_18-05`](./log_cambios_2026-10-11_18-05.md) | Superada | 19.8 – 20.0 / 20 | Poda a 10 referencias canónicas (supera mínimo de 3), símbolo indicatriz $\mathbb{I}$ definido, pregunta de investigación fluida. |
