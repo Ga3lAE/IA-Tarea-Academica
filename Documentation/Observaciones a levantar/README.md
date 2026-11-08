@@ -21,25 +21,28 @@ flowchart TD
         I4["Iteración 2026-10-11_12-41 [SUPERADA]\n(Alineación con sílabo U2, CART, nombres completos y cita de IA)"]
         I5["Iteración 2026-10-11_16-35 [SUPERADA]\n(Cotejo Guía PUCP 2015, sincronización .bbl y script cv2024.py)"]
         I6["Iteración 2026-10-11_18-05 [SUPERADA]\n(Poda a 10 referencias, indicatriz I definida, H2 ±0.035)"]
-        I7["Consolidado Vigente 2026-10-11_18-20 [ACTIVA / OFICIAL]\n(log_cambios_2026-10-11_18-20.md + 4 nuevos gráficos + Sección 3 reestructurada)"]
+        I7["Iteración 2026-10-11_18-20 / 19-17 [ENTREGABLE PARCIAL]\n(log_cambios_2026-10-11_19-17.md — Nota obtenida: 19.0 / 20.0)"]
+        I8["Iteración 2026-11-07_23-25 [ACTIVA / EN REMEDIACIÓN]\n(log_cambios_2026-11-07_23-25.md — Observaciones del jurado al Parcial)"]
     end
 
     R -->|Gobierna| Historial
-    I7 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(Versión oficial y evaluable)"]
+    I8 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
 ```
 
 > [!CAUTION]
 > **ESTADO DE LAS VERSIONES EN ESTA CARPETA:**
-> * **Versión Oficial Vigente:** [`log_cambios_2026-10-11_18-20.md`](./log_cambios_2026-10-11_18-20.md) y los archivos $\text{\LaTeX}$ en [`Documentation/latex/`](../latex/). Catálogo de 4 nuevos gráficos metodológicos en alta resolución (`.pdf`/`.png`), Sección 3 reestructurada en 3 subsecciones académicas sin listas redundantes, preprocesamiento formal (imputación intra-vivienda, outliers preservados, `GroupKFold` espacial) y 4 páginas exactas.
+> * **Versión Oficial Vigente:** [`log_cambios_2026-11-07_23-25.md`](./log_cambios_2026-11-07_23-25.md) (Diagnóstico y plan de levantamiento de las 2 observaciones del jurado al Entregable Parcial, calificado con **19.0 / 20.0**) y [`log_cambios_2026-10-11_19-17.md`](./log_cambios_2026-10-11_19-17.md).
 > * **Versión Superada:** Los archivos con sufijo `_2026-10-08_20-30.md` en esta carpeta corresponden a un borrador intermedio que **contiene erratas factuales** (ver §3). **NO deben utilizarse como fuente de la verdad.**
 
 ---
 
 ## 2. Índice Histórico de Iteraciones de Auditoría
 
-| Iteración | Timestamp | Estado | Calificación Proyectada | Alcance Principal y Veredicto |
+| Iteración | Timestamp | Estado | Calificación / Proyección | Alcance Principal y Veredicto |
 | :---: | :---: | :---: | :---: | :--- |
-| **Consolidado Vigente** | **[`2026-10-11_18-20`](./log_cambios_2026-10-11_18-20.md)** | **ACTIVA / OFICIAL** | **20.0 / 20** | **Versión definitiva de entrega.** 4 nuevos gráficos metodológicos generados, Sección 3 reestructurada en 3 subsecciones fluidas (3.1 E/S, 3.2 Preprocesamiento y anti-fuga, 3.3 Modelos), nulos intra-vivienda, preservación de outliers, `GroupKFold` espacial, 0 redundancias, 4 páginas exactas. |
+| **Post-Parcial (Jurado)** | **[`2026-11-07_23-25`](./log_cambios_2026-11-07_23-25.md)** | **ACTIVA / OFICIAL** | **19.0 / 20 (Real)** | **Registro de observaciones del Entregable Parcial:** (1) Reemplazar imputación `ffill/bfill` en 72 hogares secundarios por categoría `"desconocido"` en categóricas y mediana del conglomerado (`CONGLOME`) en numéricas; (2) Reactivar sección formal de *Declaración de contribución de cada integrante* en `main.tex`. |
+| **Pre-Envío Parcial** | [`2026-10-11_19-17`](./log_cambios_2026-10-11_19-17.md) | Entregada | 19.0 / 20 | Verificación final de compilación limpia, ajuste de conglomerados en test 2025 (601 conglomerados, 599 en 2024) y retiro de referencias explícitas al curso. |
+| **Consolidado Parcial** | [`2026-10-11_18-20`](./log_cambios_2026-10-11_18-20.md) | Superada | 20.0 / 20 (Proy.) | 4 nuevos gráficos metodológicos generados, Sección 3 reestructurada en 3 subsecciones fluidas (3.1 E/S, 3.2 Preprocesamiento y anti-fuga, 3.3 Modelos), preservación de outliers, `GroupKFold` espacial, 0 redundancias, 4 páginas exactas. |
 | **Ronda 6 (Poda Bibliográfica)** | [`2026-10-11_18-05`](./log_cambios_2026-10-11_18-05.md) | Superada | 19.8 – 20.0 / 20 | Poda a 10 referencias canónicas (supera mínimo de 3), símbolo indicatriz $\mathbb{I}$ definido, pregunta de investigación fluida. |
 | **Ronda 5 (Cotejo PUCP)** | [`2026-10-11_16-35`](./log_cambios_2026-10-11_16-35.md) | Superada | 19.5 – 20.0 / 20 | Cotejo formal con Guía PUCP 2015, script `cv2024.py` en repositorio, H2 unificada a $\pm 0.035$. |
 | **Ronda 4 (Alineación Sílabo)** | [`2026-10-11_12-41`](./log_cambios_2026-10-11_12-41.md) | Superada | 18.5 – 19.5 / 20 | Integró contenidos de la Unidad 2 del sílabo (T2, T3, T4), agregó árbol CART, nombres completos y códigos de los 4 integrantes, citas de Claude y ChatGPT. Desbordaba a 5 páginas por 2 referencias. |
