@@ -27,16 +27,17 @@ flowchart TD
         I10["Iteración 2026-11-08_13-15 [SUPERADA]\n(log_cambios_2026-11-08_13-15.md — Unificación en notebook macro y remoción de carpetas redundantes)"]
         I11["Iteración 2026-11-08_13-25 [SUPERADA]\n(log_cambios_2026-11-08_13-25.md — Estandarización semántica de columnas según diccionarios INEI)"]
         I12["Iteración 2026-11-08_13-55 [SUPERADA]\n(log_cambios_2026-11-08_13-55.md — Sprint 2: Fusión Relacional e Integración del Big DataFrame)"]
-        I13["Iteración 2026-11-08_14-15 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-08_14-15.md — Limpieza de código obsoleto en src/ y creación de src/README.md)"]
+        I13["Iteración 2026-11-08_14-15 [SUPERADA]\n(log_cambios_2026-11-08_14-15.md — Limpieza de código obsoleto en src/ y creación de src/README.md)"]
+        I14["Iteración 2026-11-08_14-35 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-08_14-35.md — Fase 3: Selección Canónica R^28, EDA y Preprocesamiento)"]
     end
 
     R -->|Gobierna| Historial
-    I13 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
+    I14 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
 ```
 
 > [!CAUTION]
 > **ESTADO DE LAS VERSIONES EN ESTA CARPETA:**
-> * **Versión Oficial Vigente:** [`log_cambios_2026-11-08_14-15.md`](./log_cambios_2026-11-08_14-15.md) (Limpieza de arquitectura sobre-ingenierizada en `src/` y documentación en `src/README.md`) junto a [`log_cambios_2026-11-08_13-55.md`](./log_cambios_2026-11-08_13-55.md).
+> * **Versión Oficial Vigente:** [`log_cambios_2026-11-08_14-35.md`](./log_cambios_2026-11-08_14-35.md) (Fase 3: Selección canónica $\mathbb{R}^{28}$, EDA y preprocesamiento anti-fuga) junto a [`log_cambios_2026-11-08_14-15.md`](./log_cambios_2026-11-08_14-15.md).
 > * **Versión Superada:** Los archivos con sufijo `_2026-10-08_20-30.md` en esta carpeta corresponden a un borrador intermedio que **contiene erratas factuales** (ver §3). **NO deben utilizarse como fuente de la verdad.**
 
 ---
@@ -45,7 +46,8 @@ flowchart TD
 
 | Iteración | Timestamp | Estado | Calificación / Proyección | Alcance Principal y Veredicto |
 | :---: | :---: | :---: | :---: | :--- |
-| **Limpieza `src/`** | **[`2026-11-08_14-15`](./log_cambios_2026-11-08_14-15.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | **Limpieza de código obsoleto en `src/`:** Eliminación de carpetas `src/core/`, `src/config/`, `src/processors/`, `src/pipeline.py`; creación de `src/README.md` como guía técnica oficial de módulos funcionales. |
+| **Fase 3 ($\mathbb{R}^{28}$ & EDA)** | **[`2026-11-08_14-35`](./log_cambios_2026-11-08_14-35.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | **Selección Canónica $\mathbb{R}^{28}$, EDA y Preprocesamiento:** Poda de 54 a 28 variables metodológicas; EDA de balance de clases, correlaciones y nulos; solución OBS-P01 en `src/preprocessing.py`. |
+| **Limpieza `src/`** | [`2026-11-08_14-15`](./log_cambios_2026-11-08_14-15.md) | Superada | 20.0 / 20 (Proy.) | **Limpieza de código obsoleto en `src/`:** Eliminación de carpetas `src/core/`, `src/config/`, `src/processors/`, `src/pipeline.py`; creación de `src/README.md` como guía técnica oficial de módulos funcionales. |
 | **Sprint 2 (Big DF)** | [`2026-11-08_13-55`](./log_cambios_2026-11-08_13-55.md) | Superada | 20.0 / 20 (Proy.) | Integración del Big DataFrame a nivel hogar: Reducción individuo $\to$ hogar con operador $\Phi$ sobre los 5 módulos; purga de 930 hogares panel en 2025 (test $N=3,199$). |
 | **Nombres INEI** | [`2026-11-08_13-25`](./log_cambios_2026-11-08_13-25.md) | Superada | 20.0 / 20 (Proy.) | Estandarización de columnas técnicas (`P10x`, `P20x`, `P30x`, `P50x`, `OCU500`, etc.) a nombres descriptivos en español según diccionarios oficiales del INEI. |
 | **Unificación Notebook** | [`2026-11-08_13-15`](./log_cambios_2026-11-08_13-15.md) | Superada | 20.0 / 20 (Proy.) | Eliminación de subdirectorios vacíos en `notebooks/` (`01_modulos` a `04_modelado`) y delimitación de `pipeline_completo.ipynb` estrictamente a la ingesta y verificación de datos. |
