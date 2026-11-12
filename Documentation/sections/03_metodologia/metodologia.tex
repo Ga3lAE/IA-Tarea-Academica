@@ -33,7 +33,7 @@ La salida es un puntaje continuo $\hat{p}_i$ (o el gasto predicho invertido en l
 };
 \node[boxgreen, below=3pt of ingesta] (preproc) {
     \textbf{\color{primarygreen}2. Ingeniería de datos y partición anti-fuga}\\
-    $\bullet$ Operador $\Phi$ (jefe y agregados); imputación intra-vivienda y mediana.\\
+    $\bullet$ Operador $\Phi$ (jefe y agregados); mediana por conglomerado y desconocido.\\
     $\bullet$ Purga de 930 hogares panel; \texttt{GroupKFold} ($K=5$) por conglomerado censal.
 };
 \node[boxteal, below=3pt of preproc] (modelado) {

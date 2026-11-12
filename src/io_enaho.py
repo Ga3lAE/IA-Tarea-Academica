@@ -264,8 +264,9 @@ def load_modulo01(
     if filter_valid_results:
         df = df[df["resultado_encuesta"].isin([1, 2])].copy()
 
-    # Indicador explícito de hogar secundario (hogar != '11')
+    # Indicadores de hogar secundario y de ausencia de datos físicos de vivienda
     df["es_hogar_secundario"] = (df["hogar"] != "11").astype(int)
+    df["sin_datos_vivienda"] = df["tipo_vivienda"].isna().astype(int)
 
     return df.reset_index(drop=True)
 
@@ -338,15 +339,21 @@ def load_all_raw_modules(
     sep: Optional[str] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
-    Carga los 5 módulos de un año filtrando al marco de Lima Metropolitana (dominio == 8).
+    Carga los 5 módulos de un año filtrando al marco de Lima Metropolitana (dominio == 8)
+    y sincronizando residentes habituales (M02) con M03 y M05 por KEY_PERSONA.
     """
     m34 = load_modulo34(year, data_root=data_root, sep=sep, filter_lima_metro=True)
     hogares_lima = m34[KEY_HOGAR].drop_duplicates()
 
     m01 = load_modulo01(year, data_root=data_root, sep=sep).merge(hogares_lima, on=KEY_HOGAR, how="inner")
     m02 = load_modulo02(year, data_root=data_root, sep=sep).merge(hogares_lima, on=KEY_HOGAR, how="inner")
-    m03 = load_modulo03(year, data_root=data_root, sep=sep).merge(hogares_lima, on=KEY_HOGAR, how="inner")
-    m05 = load_modulo05(year, data_root=data_root, sep=sep).merge(hogares_lima, on=KEY_HOGAR, how="inner")
+
+    # Residentes habituales verificados en M02
+    residentes_keys = m02[KEY_PERSONA].drop_duplicates()
+
+    # M03 y M05 se restringen a los residentes habituales de Lima Metropolitana
+    m03 = load_modulo03(year, data_root=data_root, sep=sep).merge(residentes_keys, on=KEY_PERSONA, how="inner")
+    m05 = load_modulo05(year, data_root=data_root, sep=sep).merge(residentes_keys, on=KEY_PERSONA, how="inner")
 
     return {
         "modulo34": m34,

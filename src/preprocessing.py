@@ -1,8 +1,8 @@
 """
 Módulo de Preprocesamiento y Transformadores Anti-Fuga (Scikit-Learn).
 Implementa la selección canónica de variables (R^28), el preprocesamiento robusto,
-la codificación One-Hot de categorías infrecuentes y el levantamiento de la observación OBS-P01
-(imputación por mediana de conglomerado en 72 hogares secundarios).
+la codificación One-Hot de categorías infrecuentes (< 1%) y el levantamiento de la observación OBS-P01
+(imputación por mediana de conglomerado en hogares secundarios con fallback a la mediana de train).
 """
 import sys
 from pathlib import Path
@@ -85,7 +85,7 @@ class SecondaryHouseholdImputer(BaseEstimator, TransformerMixin):
     Transformador Scikit-Learn que resuelve la Observación OBS-P01 del Jurado:
     1. Imputa atributos numéricos de vivienda ('total_habitaciones', 'total_dormitorios')
        utilizando la mediana del conglomerado censal (CONGLOME) calculada estrictamente
-       sobre el fold de entrenamiento, con respaldo en la mediana global de train.
+       sobre el fold de entrenamiento, con respaldo incondicional en la mediana global de train.
     2. Recalcula de forma consistente 'personas_por_hab' tras la imputación física.
     3. Resuelve nulos estructurales de empleo asignando 0.0 horas semanales trabajadas
        cuando el jefe de hogar no trabaja (jefe_ocupado == 0).
@@ -122,7 +122,7 @@ class SecondaryHouseholdImputer(BaseEstimator, TransformerMixin):
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         df = X.copy() if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
 
-        # 1. Imputación por conglomerado censal en vivienda
+        # 1. Imputación por conglomerado censal en vivienda con fallback global de train
         if self.group_col in df.columns:
             hab_imp = df[self.group_col].map(self.cong_hab_median_).fillna(self.global_hab_median_)
             dor_imp = df[self.group_col].map(self.cong_dor_median_).fillna(self.global_dor_median_)
@@ -135,7 +135,7 @@ class SecondaryHouseholdImputer(BaseEstimator, TransformerMixin):
         if "total_dormitorios" in df.columns:
             df["total_dormitorios"] = df["total_dormitorios"].fillna(dor_imp)
 
-        # 2. Recalcular hacinamiento tras la imputación de habitaciones
+        # 2. Recalcular hacinamiento tras la imputación física de habitaciones
         if "personas_por_hab" in df.columns and "n_miembros" in df.columns:
             hab_safe = df["total_habitaciones"].clip(lower=1)
             df["personas_por_hab"] = df["personas_por_hab"].fillna(df["n_miembros"] / hab_safe)
@@ -145,6 +145,11 @@ class SecondaryHouseholdImputer(BaseEstimator, TransformerMixin):
             df.loc[df["jefe_ocupado"] == 0, "jefe_horas_semanales"] = 0.0
 
         return df
+
+    def get_feature_names_out(self, input_features=None):
+        if input_features is not None:
+            return np.asarray(input_features, dtype=object)
+        return None
 
 
 # =============================================================================
@@ -156,7 +161,7 @@ def build_preprocessor(
     categorical_cols: Optional[List[str]] = None,
     scale_numeric: bool = True,
     one_hot: bool = True,
-    min_category_frequency: int = 20,
+    min_category_frequency: Union[int, float] = 0.01,
 ) -> ColumnTransformer:
     """
     Construye el ColumnTransformer de Scikit-Learn para las 28 variables canónicas.
@@ -170,9 +175,9 @@ def build_preprocessor(
     scale_numeric : bool, default=True
         Si es True, aplica RobustScaler() a las numéricas (recomendado para modelos lineales).
     one_hot : bool, default=True
-        Si es True, aplica OneHotEncoder agrupando categorías con frecuencia < min_category_frequency.
+        Si es True, aplica OneHotEncoder agrupando categorías con frecuencia < min_category_frequency (< 1%).
         Si es False, aplica OrdinalEncoder (para árboles nativos).
-    min_category_frequency : int, default=20
+    min_category_frequency : int | float, default=0.01
         Frecuencia mínima para agrupar categorías raras (< 1% de la muestra).
 
     Retorna
@@ -184,14 +189,14 @@ def build_preprocessor(
     if categorical_cols is None:
         categorical_cols = CATEGORICAL_COLS
 
-    # Rama Numérica
+    # Rama Numérica: imputación por mediana general + escalamiento robusto
     num_steps = [("imputer", SimpleImputer(strategy="median"))]
     if scale_numeric:
         num_steps.append(("scaler", RobustScaler()))
     num_pipe = Pipeline(num_steps)
 
-    # Rama Categórica
-    cat_steps = [("imputer", SimpleImputer(strategy="constant", fill_value=-1))]
+    # Rama Categórica: categoría sentinela -1.0 ("desconocido") + One-Hot con agrupación de infrecuentes
+    cat_steps = [("imputer", SimpleImputer(strategy="constant", fill_value=-1.0))]
     if one_hot:
         cat_steps.append((
             "encoder",
@@ -206,7 +211,7 @@ def build_preprocessor(
             "encoder",
             OrdinalEncoder(
                 handle_unknown="use_encoded_value",
-                unknown_value=-1,
+                unknown_value=-1.0,
             )
         ))
     cat_pipe = Pipeline(cat_steps)
@@ -225,7 +230,7 @@ def build_full_pipeline(
     estimator,
     scale_numeric: bool = True,
     one_hot: bool = True,
-    min_category_frequency: int = 20,
+    min_category_frequency: Union[int, float] = 0.01,
 ) -> Pipeline:
     """
     Construye el Pipeline end-to-end garantizando cero fuga de datos:
@@ -299,7 +304,7 @@ if __name__ == "__main__":
     X_tr_clean = cleaner.fit_transform(X_tr)
     X_te_clean = cleaner.transform(X_te)
 
-    prep = build_preprocessor(scale_numeric=True, one_hot=True)
+    prep = build_preprocessor(scale_numeric=True, one_hot=True, min_category_frequency=0.01)
     X_tr_proc = prep.fit_transform(X_tr_clean)
     X_te_proc = prep.transform(X_te_clean)
 

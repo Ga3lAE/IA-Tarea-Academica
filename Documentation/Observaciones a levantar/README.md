@@ -28,16 +28,19 @@ flowchart TD
         I11["Iteración 2026-11-08_13-25 [SUPERADA]\n(log_cambios_2026-11-08_13-25.md — Estandarización semántica de columnas según diccionarios INEI)"]
         I12["Iteración 2026-11-08_13-55 [SUPERADA]\n(log_cambios_2026-11-08_13-55.md — Sprint 2: Fusión Relacional e Integración del Big DataFrame)"]
         I13["Iteración 2026-11-08_14-15 [SUPERADA]\n(log_cambios_2026-11-08_14-15.md — Limpieza de código obsoleto en src/ y creación de src/README.md)"]
-        I14["Iteración 2026-11-08_14-35 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-08_14-35.md — Fase 3: Selección Canónica R^28, EDA y Preprocesamiento)"]
+        I14["Iteración 2026-11-08_14-35 [SUPERADA]\n(log_cambios_2026-11-08_14-35.md — Fase 3: Selección Canónica R^28, EDA y Preprocesamiento)"]
+        I15["Iteración 2026-11-08_18-33 [SUPERADA]\n(log_cambios_2026-11-08_18-33.md — Auditoría técnica de la reingeniería y 16 observaciones RC-01 a RC-16)"]
+        I16["Iteración 2026-11-11_10-55 [SUPERADA]\n(log_cambios_2026-11-11_10-55.md — Sprint 3: Documentación raíz y Sprint 4: Refinamiento de Ingesta y Agregaciones)"]
+        I17["Iteración 2026-11-11_11-45 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-11_11-45.md — Sprint 5: Preprocesamiento Anti-Fuga R^28 y Subsanación Definitiva OBS-P01)"]
     end
 
     R -->|Gobierna| Historial
-    I14 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
+    I17 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
 ```
 
 > [!CAUTION]
 > **ESTADO DE LAS VERSIONES EN ESTA CARPETA:**
-> * **Versión Oficial Vigente:** [`log_cambios_2026-11-08_14-35.md`](./log_cambios_2026-11-08_14-35.md) (Fase 3: Selección canónica $\mathbb{R}^{28}$, EDA y preprocesamiento anti-fuga) junto a [`log_cambios_2026-11-08_14-15.md`](./log_cambios_2026-11-08_14-15.md).
+> * **Versión Oficial Vigente:** [`log_cambios_2026-11-11_11-45.md`](./log_cambios_2026-11-11_11-45.md) (Sprint 5: Preprocesamiento Anti-Fuga $\mathbb{R}^{28}$ y Subsanación Definitiva de OBS-P01 en `src/preprocessing.py`).
 > * **Versión Superada:** Los archivos con sufijo `_2026-10-08_20-30.md` en esta carpeta corresponden a un borrador intermedio que **contiene erratas factuales** (ver §3). **NO deben utilizarse como fuente de la verdad.**
 
 ---
@@ -46,7 +49,10 @@ flowchart TD
 
 | Iteración | Timestamp | Estado | Calificación / Proyección | Alcance Principal y Veredicto |
 | :---: | :---: | :---: | :---: | :--- |
-| **Fase 3 ($\mathbb{R}^{28}$ & EDA)** | **[`2026-11-08_14-35`](./log_cambios_2026-11-08_14-35.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | **Selección Canónica $\mathbb{R}^{28}$, EDA y Preprocesamiento:** Poda de 54 a 28 variables metodológicas; EDA de balance de clases, correlaciones y nulos; solución OBS-P01 en `src/preprocessing.py`. |
+| **Sprint 5 (Preproc. $\mathbb{R}^{28}$ & OBS-P01)** | **[`2026-11-11_11-45`](./log_cambios_2026-11-11_11-45.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | **Sprint 5 completado:** `SecondaryHouseholdImputer` con mediana de conglomerado y fallback global de train; One-Hot agrupando $<1\%$; 0% NaNs en CV y Test 2025; pipeline verificado (PR-AUC 0.5542 en OOT 2025). |
+| **Sprint 3 y 4 (Ingesta & Agregaciones)** | [`2026-11-11_10-55`](./log_cambios_2026-11-11_10-55.md) | Superada | 20.0 / 20 (Proy.) | Sincronización de README/IMPLEMENTATION raíz; resolución de RC-02, RC-06/RC-07, RC-08, RC-09 y loader canónico `load_canonical_train_test()`. |
+| **Auditoría Reingeniería** | [`2026-11-08_18-33`](./log_cambios_2026-11-08_18-33.md) | Superada | 20.0 / 20 (Proy.) | Auditoría exhaustiva de la rama `reingenieria-codigo`: 16 observaciones técnicas (RC-01 a RC-16) y 8 tareas clave para el informe final (EF-01 a EF-08). |
+| **Fase 3 ($\mathbb{R}^{28}$ & EDA)** | [`2026-11-08_14-35`](./log_cambios_2026-11-08_14-35.md) | Superada | 20.0 / 20 (Proy.) | Selección Canónica $\mathbb{R}^{28}$, EDA y Preprocesamiento preliminar. |
 | **Limpieza `src/`** | [`2026-11-08_14-15`](./log_cambios_2026-11-08_14-15.md) | Superada | 20.0 / 20 (Proy.) | **Limpieza de código obsoleto en `src/`:** Eliminación de carpetas `src/core/`, `src/config/`, `src/processors/`, `src/pipeline.py`; creación de `src/README.md` como guía técnica oficial de módulos funcionales. |
 | **Sprint 2 (Big DF)** | [`2026-11-08_13-55`](./log_cambios_2026-11-08_13-55.md) | Superada | 20.0 / 20 (Proy.) | Integración del Big DataFrame a nivel hogar: Reducción individuo $\to$ hogar con operador $\Phi$ sobre los 5 módulos; purga de 930 hogares panel en 2025 (test $N=3,199$). |
 | **Nombres INEI** | [`2026-11-08_13-25`](./log_cambios_2026-11-08_13-25.md) | Superada | 20.0 / 20 (Proy.) | Estandarización de columnas técnicas (`P10x`, `P20x`, `P30x`, `P50x`, `OCU500`, etc.) a nombres descriptivos en español según diccionarios oficiales del INEI. |

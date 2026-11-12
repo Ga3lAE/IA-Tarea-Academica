@@ -1,45 +1,47 @@
-# Predicción de Pobreza Urbana en Lima y Callao mediante Machine Learning
+# Predicción y Clasificación de Pobreza Urbana en Lima y Callao mediante Machine Learning
 
-> **Curso:** Inteligencia Artificial (2026-2) — Tarea Académica  
+> **Curso:** Inteligencia Artificial (1INF24 - 2026-2) — Tarea Académica  
 > **Institución:** Pontificia Universidad Católica del Perú (PUCP)  
-> **Fuente de Datos:** Encuesta Nacional de Hogares (ENAHO) — Instituto Nacional de Estadística e Informática (INEI)  
+> **Equipo 3:** Gael Sebastian Arias Escalante, Melanie Nadine Mallqui Huaraz, Valeshka del Pilar Lavado Guerra, Edilvan Franco Salcedo Enciso.  
+> **Fuente de Datos:** Encuesta Nacional de Hogares (ENAHO) — Instituto Nacional de Estadística e Informática (INEI).  
 
 ---
 
 ## 1. Descripción del Proyecto
 
-El objetivo principal de este proyecto es diseñar, entrenar y evaluar modelos de **Machine Learning para la clasificación binaria de hogares en situación de pobreza en Lima Metropolitana y la Provincia Constitucional del Callao**.
+El objetivo de este proyecto es diseñar, entrenar y evaluar comparativamente modelos de **Machine Learning para la clasificación binaria de hogares en situación de pobreza monetaria en Lima Metropolitana y la Provincia Constitucional del Callao** (`DOMINIO == 8`), con foco en la minimización del error de exclusión de hogares vulnerables y la estabilidad temporal fuera de tiempo (*out-of-time*).
 
-La variable objetivo se formula a nivel de **Hogar**:
+La variable objetivo se formaliza a nivel de **Hogar** a partir del Módulo 34 (Sumaria):
 $$\text{Target } (y) = \begin{cases} 
 1 & \text{si el hogar está en Pobreza Extrema o Pobreza No Extrema (Pobreza Total)} \\
 0 & \text{si el hogar es No Pobre}
 \end{cases}$$
 
-### Enfoque Metodológico: Proxy Means Testing (PMT)
-En la estadística oficial del INEI, la pobreza monetaria se calcula determinísticamente comparando el gasto mensual per cápita contra el valor de la canasta básica (`LINEA`). 
+### Enfoque Metodológico: Proxy Means Testing (PMT) y Cero Fuga
+En la estadística oficial del INEI, la pobreza se define comparando el gasto mensual per cápita auditado contra el valor de la canasta básica (`LINEA`, S/ 559.20 en Lima Metropolitana). 
 
-Para construir un modelo de predicción e inferencia real (útil para focalización de programas sociales y políticas públicas sin necesidad de auditar los gastos diarios del hogar), **se excluyen estrictamente las variables de gasto e ingreso monetario de Sumaria**. Esto previene el **Data Leakage** (fuga de información) y obliga a los modelos a aprender a partir de variables estructurales: características constructivas de la vivienda, hacinamiento, nivel educativo acumulado, formalidad laboral, tenencia de activos y composición demográfica.
+Para construir un clasificador útil para la focalización ágil de programas de protección social sin necesidad de auditar los gastos diarios familiares, **se excluyen de forma estricta todas las variables de ingreso y gasto monetario**. El clasificador induce patrones de vulnerabilidad exclusivamente a partir de características estructurales observables: materialidad de la vivienda, hacinamiento, composición y carga demográfica, nivel educativo acumulado y condiciones de formalidad laboral e inserción previsional.
 
 ---
 
 ## 2. Microdatos y Fuentes de Información
 
-Los datos provienen de la **ENAHO con Metodología Actualizada** del INEI para los periodos post-pandemia (**2024 y 2025**, ampliable a **2023**):
+El proyecto integra microdatos de la **ENAHO con Metodología Actualizada** del INEI para los periodos post-pandemia (**2024 y 2025**):
 
 | Módulo | Archivo Raw | Nombre Temático | Nivel de Granularidad | Registros (Lima Metropolitana, `DOMINIO 8`) |
-| :--- | :--- | :--- | :--- | :---: |
+| :--- | :--- | :--- | :---: | :---: |
 | **Módulo 34** | `Sumaria-*.csv` | Resumen de Hogares y Target Oficial | Hogar | 4,090 (2024) / 4,129 (2025) |
-| **Módulo 01** | `Enaho01-*-100.csv`| Características de la Vivienda y Servicios Básicos | Hogar | 4,090 (2024) / 4,129 (2025) |
-| **Módulo 02** | `Enaho01-*-200.csv`| Características Demográficas de los Miembros | Persona | ~13,600 miembros / año |
-| **Módulo 03** | `Enaho01A-*-300.csv`| Educación y Capital Humano ($\ge 3$ años) | Persona | Miembros de 3 años o más |
-| **Módulo 05** | `Enaho01a-*-500.csv`| Empleo, Ocupación e Informalidad ($\ge 14$ años) | Persona | Miembros de 14 años o más |
+| **Módulo 01** | `Enaho01-*-100.csv` | Características de la Vivienda y Servicios | Hogar | 4,090 (2024) / 4,129 (2025) |
+| **Módulo 02** | `Enaho01-*-200.csv` | Composición Demográfica de Residentes | Individuo | ~13,600 miembros / año |
+| **Módulo 03** | `Enaho01A-*-300.csv`| Educación y Capital Humano ($\ge 3$ años) | Individuo | Miembros $\ge 3$ años |
+| **Módulo 05** | `Enaho01a-*-500.csv`| Empleo, Formalidad y Horas ($\ge 14$ años) | Individuo | Miembros $\ge 14$ años |
 
-*Alcance:* Lima Metropolitana tal como la define el INEI (`DOMINIO 8` = Provincia de Lima `1501` + Callao `07`), nivel de inferencia oficial de la ENAHO. Ver [`log_cambios_2026-10-08_21-04.md`](Documentation/Observaciones%20a%20levantar/log_cambios_2026-10-08_21-04.md).
+* **Conjunto de Entrenamiento:** ENAHO 2024 completa ($N = 4{,}090$ hogares, $18.92\%$ de pobreza monetaria).
+* **Conjunto de Prueba Fuera de Tiempo (Out-of-Time):** ENAHO 2025 con **purga estricta de los 930 hogares panel** repetidos que fueron encuestados en 2024, consolidando un test independiente de **$N_{\text{test}} = 3{,}199$ hogares nuevos** ($17.41\%$ de pobreza monetaria).
 
 > [!IMPORTANT]
-> **Descarga de Microdatos con Git LFS:**  
-> Los microdatos crudos en `Data/` están versionados con **Git LFS** debido a su tamaño. Para clonar los datos reales y evitar punteros de texto:
+> **Gestión de Microdatos con Git LFS:**  
+> Los microdatos brutos en `Data/` están versionados con **Git LFS**. Para descargarlos antes de ejecutar:
 > ```bash
 > git lfs install
 > git lfs pull
@@ -50,70 +52,69 @@ Los datos provienen de la **ENAHO con Metodología Actualizada** del INEI para l
 ## 3. Desafíos Técnicos de los Datos Urbanos y Soluciones
 
 ### A. Desbalance de Clases (~18.9% Pobreza vs ~81.1% No Pobre)
-En Lima Metropolitana la pobreza afecta al **18.9% de los hogares de la muestra 2024** (17.8% en 2025; ratio ~1:4.3) y al **28.2% de las personas** (ponderado con `FACTOR07`, igual a la cifra oficial del INEI). Un modelo trivial (*dummy*) que prediga siempre "No Pobre" obtendría ~81% de Accuracy con Recall = 0%.
-- **Estrategia:** Optimización orientada a **F1-Score (clase minoritaria / macro)**, **PR-AUC (Precision-Recall AUC)**, matrices de costos, pesos de clase (`class_weight='balanced'`) y calibración de umbrales (*Threshold Tuning*).
+En Lima Metropolitana la pobreza afecta al 18.92% de los hogares en 2024 (razón de desbalance $\gamma \approx 4.28$). Un modelo ingenuo que prediga siempre "No Pobre" obtendría ~81% de Accuracy pero un Recall de 0%.
+- **Estrategia:** Optimización orientada a **PR-AUC**, matrices de costo asimétricas con peso de penalización $\alpha \in \{1, 2, \gamma\}$ sobre la pérdida logística y comparación de modelos a **cobertura presupuestal fija ($B = 20\%$)** mediante curvas de Error de Exclusión ($\mathrm{EE}$) y Error de Inclusión ($\mathrm{IE}$).
 
-### B. Filtro de Baja Varianza en Entorno Metropolitano (*Low Variance Filter*)
-A diferencia del ámbito rural, en Lima y Callao la luz eléctrica (`P1121`, 98.6%), la tenencia de celular (`P1142`, 97.2%) y las Necesidades Básicas Insatisfechas oficiales (`NBI1` a `NBI5`, >96% sin carencias) son cuasi-constantes. El pipeline descarta estas variables por no poseer varianza discriminante en entornos urbanos consolidados.
+### B. Tratamiento Riguroso de Nulos en Hogares Secundarios (Levantamiento OBS-P01)
+- En el Módulo 01, **72 hogares secundarios en 2024 y 96 en 2025** (`hogar >= '22'`) que cohabitan en un mismo lote o inmueble con el hogar principal carecen de registro en 5 atributos físicos de la vivienda (`tipo_vivienda`, `material_pared`, `material_piso`, `total_habitaciones`, `total_dormitorios`).
+- En atención a la retroalimentación del jurado (**OBS-P01**), **se descarta cualquier propagación intra-vivienda (`ffill/bfill`)**. Las condiciones de habitabilidad de hogares secundarios pueden diferir sustancialmente de las del principal.
+- **Solución implementada:** Las variables cualitativas de vivienda se imputan mediante la categoría explícita `"desconocido"`, mientras que los conteos de habitaciones y dormitorios se imputan mediante la **mediana del conglomerado censal (`conglomerado`)** calculada estrictamente en el pliegue de entrenamiento (con respaldo en la mediana global de train).
 
-### C. Nulos Estructurales y Saltos de Cuestionario (*Skip Patterns*)
-- **72 nulos (1.76%) en 2024 y 96 (2.33%) en 2025 en pisos, paredes y cuartos:** Ocurrían en hogares secundarios (`HOGAR 22, 33...`) que comparten vivienda con un hogar principal (`HOGAR 11`). El procesador propaga las características físicas del inmueble dentro de la misma vivienda (`ffill()`/`bfill()` aislado por `conglomerado` y `vivienda`), reduciendo los nulos a **0.00%**.
-- **Nulos en Título de Propiedad (32%) y SUNARP (57%):** No son datos perdidos al azar; corresponden a inquilinos y hogares con viviendas cedidas. Se consolidan en la variable categórica `seguridad_tenencia` (`propia_registrada_sunarp`, `propia_titulada_no_sunarp`, `propia_sin_titulo`, `alquilada`, `cedida_posesion_informal`).
+### C. Espacio de Características Canónico ($\mathbf{x}_i \in \mathbb{R}^{28}$)
+Se descartan variables con nula varianza en Lima Metropolitana (ej. alumbrado eléctrico con >98% de cobertura y Necesidades Básicas Insatisfechas oficiales NBI1-NBI5 con >96% ceros) y se estructura un vector denso de **28 predictores**:
+* **11 de Vivienda:** Tipo, paredes, pisos, tenencia, agua, saneamiento, combustible, internet, habitaciones y dormitorios.
+* **7 de Demografía:** Tamaño del hogar, menores de 5, menores de 14, adultos mayores de 65, tasa de dependencia, edad y sexo del jefe.
+* **2 de Educación:** Nivel educativo máximo del jefe y máximo acumulado en el hogar.
+* **8 de Empleo y Ratios:** Ocupados totales, ocupados por miembro, hacinamiento (personas por cuarto), condición laboral, categoría ocupacional, horas trabajadas, formalidad (RUC) y cobertura previsional del jefe.
 
 ---
 
-## 4. Arquitectura de Software (Principios SOLID)
+## 4. Arquitectura de Software Modular (`src/`)
 
-El proyecto implementa el patrón **Template Method** respetando el **Principio Abierto/Cerrado (Open/Closed Principle - OCP)**:
+El código sigue una arquitectura directa y modular (principio **KISS**), separando claramente las responsabilidades:
 
-```
+```text
 src/
-├── config/
-│   ├── base.py                   # Constantes de alcance geográfico y llaves primarias
-│   └── modulo01.py               # Mapeos, esquemas y reglas de validación de Vivienda
-├── core/
-│   ├── base_processor.py         # Clase abstracta BaseModuleProcessor (Template Method)
-│   └── validators.py             # Aserciones estrictas (Schema, Rows, PK Uniqueness, Nulls)
-├── processors/
-│   └── modulo01.py               # Implementación concreta para Módulo 01
-└── pipeline.py                   # Orquestador multi-año y multi-módulo
+├── __init__.py           # Declaración del paquete
+├── README.md             # Guía técnica de la biblioteca modular
+├── io_enaho.py           # Ingesta, autodetección de delimitadores y estandarización INEI
+├── dataset.py            # Operador Phi (persona -> hogar), Big DataFrame y purga de panel
+├── preprocessing.py      # Espacio canónico R^28 y transformadores anti-fuga (Scikit-Learn)
+├── models.py             # Definición y ajuste de los 5 clasificadores bajo GroupKFold(5)
+└── evaluation.py         # Curvas EE-IE, Cluster Bootstrap (1,000 réplicas) y TreeSHAP
 ```
-
-### Extensibilidad (OCP)
-- **Cerrado a modificación:** `BaseModuleProcessor` blinda el ciclo de vida de los datos, la codificación, la autodetección de delimitador (`,` vs `;`), los filtros geográficos y la persistencia.
-- **Abierto a extensión:** Cada nuevo módulo (Módulo 02, 03, 05, 34) se incorpora creando una subclase que hereda de `BaseModuleProcessor` e implementa sus hooks específicos sin alterar el resto del sistema.
 
 ---
 
 ## 5. Estructura del Repositorio
 
-```
+```text
 Tarea Académica/
-├── README.md                     # Documento principal del proyecto
-├── IMPLEMENTATION.md             # Bitácora detallada de implementación paso a paso
+├── README.md                     # Documento principal del proyecto (este archivo)
+├── IMPLEMENTATION.md             # Bitácora detallada de sprints, auditorías y roadmap
 ├── requirements.txt              # Dependencias del proyecto
-├── .gitignore                    # Reglas de exclusión para Git y compilación LaTeX
-├── src/                          # Código modular y procesadores (OOP / OCP)
-│   ├── config/                   # Diccionarios de mapeo y esquemas por módulo
-│   ├── core/                     # BaseModuleProcessor y suite de validadores
-│   ├── processors/               # Implementaciones concretas por módulo ENAHO
-│   └── pipeline.py               # Orquestador multi-año y multi-módulo
-├── notebooks/                    # Flujo de trabajo interactivo por etapas
-│   ├── 01_modulos/               # Extracción y limpieza modular (01_vivienda_modulo01.ipynb)
-│   ├── 02_integracion/           # Fusión relacional jerárquica a nivel hogar (01 + 02 + 03 + 05 + 34)
-│   ├── 03_eda/                   # Análisis exploratorio multivariado de pobreza
-│   ├── 04_modelado/              # Modelos de clasificación supervisada out-of-time
-│   └── README.md                 # Guía del flujo de notebooks
-├── Documentation/                # Informe académico (PUCP 1INF24)
-│   ├── latex/                    # Master LaTeX (main.tex, main.pdf)
-│   └── sections/                 # Capítulos modulares (.md y .tex sincronizados)
+├── .gitignore                    # Reglas de exclusión para Git, temporales y LaTeX
+│
+├── src/                          # Biblioteca modular de Python (KISS)
+│   ├── io_enaho.py               # Lectura de los 5 módulos ENAHO
+│   ├── dataset.py                # Integración relacional y purga de panel
+│   └── preprocessing.py          # Preprocesamiento anti-fuga y espacio R^28
+│
+├── notebooks/                    # Entorno analítico interactivo
+│   ├── pipeline_completo.ipynb   # Flujo end-to-end: ingesta, EDA, modelado y SHAP
+│   └── README.md                 # Guía del flujo interactivo
+│
+├── Documentation/                # Sistema de documentación académica oficial
+│   ├── latex/                    # Master LaTeX (main.tex, main.pdf, references.bib)
+│   ├── sections/                 # Capítulos modulares del informe (01 a 11)
+│   ├── Observaciones a levantar/ # Memoria de auditorías, logs por timestamp y rúbricas
+│   └── README.md                 # Guía del sistema documental
+│
 └── Data/
-    ├── 2024/
-    │   └── enaho/                # Microdatos ENAHO 2024 (966-Modulo01 a 966-Modulo34)
-    ├── 2025/
-    │   └── enaho/                # Microdatos ENAHO 2025 (1031-Modulo01 a 1031-Modulo34)
-    ├── processed/                # Datasets limpios estandarizados (*_cleaned.csv)
-    └── Fuentes.md                # Enlaces oficiales y diccionario metodológico INEI
+    ├── 2024/enaho/               # Microdatos brutos ENAHO 2024 (M01, M02, M03, M05, M34)
+    ├── 2025/enaho/               # Microdatos brutos ENAHO 2025 (M01, M02, M03, M05, M34)
+    ├── processed/                # Datasets consolidados procesados
+    └── Fuentes.md                # Fichas metodológicas y enlaces oficiales del INEI
 ```
 
 ---
@@ -121,30 +122,33 @@ Tarea Académica/
 ## 6. Instalación y Uso Rápido
 
 ### Requisitos Previos
-Python 3.10 o superior con `pandas`, `numpy`, `matplotlib`, `seaborn` y `scikit-learn`.
-
+Python 3.10 o superior:
 ```bash
-# Clonar el repositorio
 git clone <url-del-repositorio>
 cd "Tarea Académica"
-
-# Instalar dependencias
 pip install -r requirements.txt
 ```
 
-### Procesar Datos mediante el Orquestador Multi-Año
+### Construir los Conjuntos de Entrenamiento y Prueba
 ```python
-from src.pipeline import ENAHOPipeline
+from src.dataset import load_train_test_master
 
-# Instanciar el pipeline
-pipe = ENAHOPipeline(data_root="Data")
+# Cargar Train 2024 (4,090 hogares) y Test 2025 sin panel (3,199 hogares)
+df_train, df_test = load_train_test_master(data_root="Data")
 
-# Procesar Módulo 01 para 2024 y 2025 de forma conjunta (8,219 hogares de Lima Metropolitana)
-df_vivienda_consolidada = pipe.run_module(
-    module_code="modulo01",
-    years=[2024, 2025],
-    export_cleaned=True,
-    concatenate_years=True
-)
-print("Dimensiones del dataset consolidado:", df_vivienda_consolidada.shape)
+print(f"Train 2024: {df_train.shape} | Tasa de pobreza: {df_train['y'].mean():.2%}")
+print(f"Test 2025:  {df_test.shape}  | Tasa de pobreza: {df_test['y'].mean():.2%}")
+```
+
+### Aplicar el Preprocesamiento Anti-Fuga ($\mathbb{R}^{28}$)
+```python
+from src.preprocessing import build_preprocessor, CANONICAL_FEATURES_28
+
+preprocessor = build_preprocessor()
+
+# Ajustar únicamente sobre train para evitar cualquier filtración de datos
+X_train = df_train[CANONICAL_FEATURES_28]
+X_train_trans = preprocessor.fit_transform(X_train)
+
+print(f"Matriz procesada de entrenamiento: {X_train_trans.shape}")
 ```
