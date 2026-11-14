@@ -31,16 +31,17 @@ flowchart TD
         I14["Iteración 2026-11-08_14-35 [SUPERADA]\n(log_cambios_2026-11-08_14-35.md — Fase 3: Selección Canónica R^28, EDA y Preprocesamiento)"]
         I15["Iteración 2026-11-08_18-33 [SUPERADA]\n(log_cambios_2026-11-08_18-33.md — Auditoría técnica de la reingeniería y 16 observaciones RC-01 a RC-16)"]
         I16["Iteración 2026-11-11_10-55 [SUPERADA]\n(log_cambios_2026-11-11_10-55.md — Sprint 3: Documentación raíz y Sprint 4: Refinamiento de Ingesta y Agregaciones)"]
-        I17["Iteración 2026-11-11_11-45 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-11_11-45.md — Sprint 5: Preprocesamiento Anti-Fuga R^28 y Subsanación Definitiva OBS-P01)"]
+        I17["Iteración 2026-11-11_11-45 [SUPERADA]\n(log_cambios_2026-11-11_11-45.md — Sprint 5: Preprocesamiento Anti-Fuga R^28 y Subsanación Definitiva OBS-P01)"]
+        I18["Iteración 2026-11-11_22-45 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-11_22-45.md — Protocolo de Limpieza de Datos, Cero Filas Eliminadas y Tratamiento de 15 Nulos)"]
     end
 
     R -->|Gobierna| Historial
-    I17 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
+    I18 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
 ```
 
 > [!CAUTION]
 > **ESTADO DE LAS VERSIONES EN ESTA CARPETA:**
-> * **Versión Oficial Vigente:** [`log_cambios_2026-11-11_11-45.md`](./log_cambios_2026-11-11_11-45.md) (Sprint 5: Preprocesamiento Anti-Fuga $\mathbb{R}^{28}$ y Subsanación Definitiva de OBS-P01 en `src/preprocessing.py`).
+> * **Versión Oficial Vigente:** [`log_cambios_2026-11-11_22-45.md`](./log_cambios_2026-11-11_22-45.md) (Protocolo de Limpieza de Datos, Cero Eliminación de Filas y Tratamiento Exhaustivo de las 15 Variables con Faltantes).
 > * **Versión Superada:** Los archivos con sufijo `_2026-10-08_20-30.md` en esta carpeta corresponden a un borrador intermedio que **contiene erratas factuales** (ver §3). **NO deben utilizarse como fuente de la verdad.**
 
 ---
@@ -49,7 +50,8 @@ flowchart TD
 
 | Iteración | Timestamp | Estado | Calificación / Proyección | Alcance Principal y Veredicto |
 | :---: | :---: | :---: | :---: | :--- |
-| **Sprint 5 (Preproc. $\mathbb{R}^{28}$ & OBS-P01)** | **[`2026-11-11_11-45`](./log_cambios_2026-11-11_11-45.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | **Sprint 5 completado:** `SecondaryHouseholdImputer` con mediana de conglomerado y fallback global de train; One-Hot agrupando $<1\%$; 0% NaNs en CV y Test 2025; pipeline verificado (PR-AUC 0.5542 en OOT 2025). |
+| **Data Cleaning (15 Nulos)** | **[`2026-11-11_22-45`](./log_cambios_2026-11-11_22-45.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | **Protocolo Integral de Limpieza:** Justificación de la política de cero filas eliminadas (*Zero Drop-Row Policy*); taxonomía de los 15 nulos en 2024 y 2025; pipeline de imputación de dos fases y validación de 0% nulos. |
+| **Sprint 5 (Preproc. $\mathbb{R}^{28}$ & OBS-P01)** | [`2026-11-11_11-45`](./log_cambios_2026-11-11_11-45.md) | Superada | 20.0 / 20 (Proy.) | **Sprint 5 completado:** `SecondaryHouseholdImputer` con mediana de conglomerado y fallback global de train; One-Hot agrupando $<1\%$; 0% NaNs en CV y Test 2025; pipeline verificado (PR-AUC 0.5542 en OOT 2025). |
 | **Sprint 3 y 4 (Ingesta & Agregaciones)** | [`2026-11-11_10-55`](./log_cambios_2026-11-11_10-55.md) | Superada | 20.0 / 20 (Proy.) | Sincronización de README/IMPLEMENTATION raíz; resolución de RC-02, RC-06/RC-07, RC-08, RC-09 y loader canónico `load_canonical_train_test()`. |
 | **Auditoría Reingeniería** | [`2026-11-08_18-33`](./log_cambios_2026-11-08_18-33.md) | Superada | 20.0 / 20 (Proy.) | Auditoría exhaustiva de la rama `reingenieria-codigo`: 16 observaciones técnicas (RC-01 a RC-16) y 8 tareas clave para el informe final (EF-01 a EF-08). |
 | **Fase 3 ($\mathbb{R}^{28}$ & EDA)** | [`2026-11-08_14-35`](./log_cambios_2026-11-08_14-35.md) | Superada | 20.0 / 20 (Proy.) | Selección Canónica $\mathbb{R}^{28}$, EDA y Preprocesamiento preliminar. |
