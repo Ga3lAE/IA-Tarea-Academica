@@ -37,8 +37,8 @@ flowchart LR
 | **3** | Sincronización y Gobernanza Documental | **COMPLETADO** | `README.md`, `IMPLEMENTATION.md` | Eliminación de referencias a clases abstractas legadas y documentación formal de OBS-P01/P02 y auditoría 18:33. |
 | **4** | Refinamiento de Agregaciones y EDA Temporal/Panel | **COMPLETADO** | `src/dataset.py`, `src/io_enaho.py`, `notebooks/pipeline_completo.ipynb` | Resolución de RC-02 a RC-09, análisis temporal 2024 vs. 2025 y detección de los 930 hogares panel repetidos sobre el Big DF unificado antes de particionar. |
 | **5** | Partición OOT, Preprocesamiento Anti-Fuga y $\mathbb{R}^{28}$ | **COMPLETADO** | `src/dataset.py`, `src/preprocessing.py` | Partición explícita `split_oot_train_test()` (purga de 930 panel $\to$ Test $N=3{,}199$) y Pipeline Scikit-Learn sobre Train 2024 ($N=4{,}090$, 0% NaNs). |
-| **6** | Modelado Supervisado y Validación Cruzada Espacial | **SIGUIENTE PASO** | `src/models.py` | Entrenamiento de 5 modelos (PMT-MCO, ElasticNet, CART podado, Random Forest, LightGBM) bajo `GroupKFold(5)` por conglomerado censal. |
-| **7** | Evaluación Fuera de Tiempo, Inferencia y XAI | **PENDIENTE** | `src/evaluation.py` | Curvas EE-IE a $B=20\%$, contraste de $H_1$ a $H_4$ con 1,000 réplicas *Cluster Bootstrap*, y explicabilidad con TreeSHAP. |
+| **6** | Modelado Supervisado Extendido y Validación Espacial | **COMPLETADO** | `src/models.py`, `src/preprocessing.py` | 16 modelos en 8 familias (5 núcleo + extendidos) bajo `GroupKFold(5)` por conglomerado, comparativa de escaladores (`Robust` vs `Standard` vs `MinMax`) y pesos de costo $\alpha \in \{1, 2, \gamma\}$. |
+| **7** | Evaluación Fuera de Tiempo, Inferencia y XAI | **SIGUIENTE PASO** | `src/evaluation.py` | Curvas EE-IE a $B=20\%$, contraste de $H_1$ a $H_4$ con 1,000 réplicas *Cluster Bootstrap*, y explicabilidad con TreeSHAP. |
 | **8** | Informe Académico Final en $\text{\LaTeX}$ ($\le 8$ páginas) | **PENDIENTE** | `Documentation/latex/main.tex`, `sections/*` | Documento final compilado con las Secciones 04 a 07 completas, sin advertencias y alineado a la rúbrica PUCP (meta: 20.0 / 20). |
 
 ---
@@ -105,15 +105,19 @@ Registrado en [`Documentation/Observaciones a levantar/log_cambios_2026-11-08_18
 ---
 
 ### Sprint 6: Modelado Supervisado y Validación Cruzada (`models.py`)
-1. **Preprocesamiento Diferenciado por Familia (Cero Fuga dentro de cada Fold):**
-   - **Lineales (`PMT-MCO`, `ElasticNet`):** `scale_numeric=True` (`RobustScaler`) + `OneHotEncoder(min_frequency=0.01)`. En `PMT-MCO` se usa `Ridge(alpha=1e-4)` (o `drop="first"`) para evitar colinealidad perfecta de las dummies sin perder equivalencia con MCO.
-   - **Árboles (`CART`, `Random Forest`, `LightGBM`):** `scale_numeric=False` (sin escalado, respetando invarianza monotónica) + `OneHotEncoder(min_frequency=0.01)` para compatibilidad uniforme con `TreeSHAP`.
-2. **Suite de 5 Clasificadores:**
-   - **Línea Base Econométrica (PMT-MCO):** Regresión sobre $\ln(\text{gasto})$, usando $-\widehat{\ln(\text{gasto})}$ como puntaje de pobreza (y corte $\widehat{\ln(\text{gasto})} < \ln(\text{línea})$).
-   - **Regresión Logística ElasticNet:** Penalización $L_1/L_2$ con ponderación de clase sensible al costo ($\alpha$).
-   - **Árbol de Decisión CART:** Poda por complejidad de costo ($\alpha_{\text{ccp}}$) para interpretabilidad directa.
-   - **Random Forest:** Ensamble de 100–500 árboles con submuestreo y peso de clase $\alpha$.
-   - **LightGBM:** Gradient Boosting con regularización $L_1/L_2$, `scale_pos_weight` parametrizado por $\alpha$.
+1. **Preprocesamiento y Escalamiento Diferenciado por Familia (Cero Fuga dentro de cada Fold):**
+   - **Verificación de Escaladores (`compare_scalers_cv`):** Comparativa empírica interna al K-Fold entre `RobustScaler`, `StandardScaler` y `MinMaxScaler` sobre modelos sensibles a escala; se fija `RobustScaler` por defecto conforme a la preservación de outliers (`O-24`, `metodologia.tex`).
+   - **Lineales, Econométricos, Generativos, Kernels, Distancias y Redes (`PMT-MCO`, `PMT-Quantile`, `ElasticNet`, `LDA`, `Naive Bayes`, `SVM-RBF`, `KNN`, `MLP`):** `scale_numeric=True, scaler_type="robust"` + `OneHotEncoder(min_frequency=0.01)`.
+   - **Árboles y Ensambles (`CART`, `Random Forest`, `Extra Trees`, `LightGBM / HistGBDT`, `AdaBoost`):** `scale_numeric=False, scaler_type="none"` (invarianza monotónica) + `OneHotEncoder(min_frequency=0.01)`.
+2. **Batería Ampliada de 16 Modelos en 8 Familias:**
+   - **Baselines de Representación Solo Vivienda ($H_1$, 12 vars):** `Logistica_Solo_Vivienda`, `RF_Solo_Vivienda`.
+   - **Econométricos Continuos ($\ln(\text{gasto})$, 28 vars):** `PMT_MCO` (OLS/Ridge), `PMT_Quantile_20` (Regresión Cuantílica $q=0.20$).
+   - **Lineales y Generativos:** `Logistica_ElasticNet` ($L_1/L_2$ con $\alpha \in \{1, 2, \gamma\}$), `LDA`, `Naive_Bayes`.
+   - **Árbol Individual Podado:** `CART_Podado` ($\alpha_{\text{ccp}}$, peso $\alpha$).
+   - **Ensambles Bagging:** `Random_Forest`, `Extra_Trees` (con peso $\alpha$).
+   - **Ensambles Gradient Boosting:** `LightGBM_GBDT` (`LGBMClassifier` / `HistGradientBoostingClassifier` leaf-wise con peso $\alpha$), `AdaBoost`.
+   - **No Lineales (Kernels, Vecindad y Deep Learning Tabular):** `SVM_RBF`, `KNN`, `MLP_Red_Neuronal`.
+   - **Meta-Ensamble:** `Stacking_Ensemble` (combinando Lineal + Bagging + Boosting).
 3. **Protocolo Espacial y Validación (2024):**
    - `GroupKFold(n_splits=5)` agrupado por `conglomerado` censal sobre la muestra 2024 ($N = 4{,}090$), generando predicciones *Out-Of-Fold* (OOF) de validación para calibrar el umbral $\tau$ ($H_3$) sin tocar Test 2025.
    - Optimización de hiperparámetros orientada a maximizar PR-AUC.

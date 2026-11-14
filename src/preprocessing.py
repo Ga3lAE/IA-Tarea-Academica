@@ -13,7 +13,7 @@ import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import RobustScaler, OneHotEncoder, OrdinalEncoder
+from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler, OneHotEncoder, OrdinalEncoder
 from sklearn.impute import SimpleImputer
 
 # Asegurar importación tanto si se ejecuta desde raíz como desde src/
@@ -70,6 +70,25 @@ CATEGORICAL_COLS: List[str] = [
 
 # Las 28 variables metodológicas que conforman el vector x_i in R^28
 CANONICAL_FEATURES_28: List[str] = NUMERIC_COLS + CATEGORICAL_COLS
+
+# Subconjunto exclusivo del Módulo 01 (Vivienda: 2 numéricas + 9 categóricas = 11 variables puras M01) para contrastar H1
+VIVIENDA_NUMERIC_COLS: List[str] = [
+    "total_habitaciones",
+    "total_dormitorios",
+]
+VIVIENDA_CATEGORICAL_COLS: List[str] = [
+    "tipo_vivienda",
+    "material_pared",
+    "material_piso",
+    "tenencia_vivienda",
+    "fuente_agua",
+    "agua_todos_los_dias",
+    "conexion_bano",
+    "combustible_cocina",
+    "tiene_internet",
+]
+VIVIENDA_FEATURES_11: List[str] = VIVIENDA_NUMERIC_COLS + VIVIENDA_CATEGORICAL_COLS
+VIVIENDA_FEATURES_12: List[str] = VIVIENDA_FEATURES_11  # Alias de compatibilidad
 
 TARGET_COL: str = "target_pobreza"
 TARGET_ALIAS: str = "y"
@@ -160,11 +179,12 @@ def build_preprocessor(
     numeric_cols: Optional[List[str]] = None,
     categorical_cols: Optional[List[str]] = None,
     scale_numeric: bool = True,
+    scaler_type: str = "robust",
     one_hot: bool = True,
     min_category_frequency: Union[int, float] = 0.01,
 ) -> ColumnTransformer:
     """
-    Construye el ColumnTransformer de Scikit-Learn para las 28 variables canónicas.
+    Construye el ColumnTransformer de Scikit-Learn para las variables indicadas.
 
     Parámetros
     ----------
@@ -173,7 +193,10 @@ def build_preprocessor(
     categorical_cols : list[str] | None
         Lista de variables categóricas (por defecto CATEGORICAL_COLS).
     scale_numeric : bool, default=True
-        Si es True, aplica RobustScaler() a las numéricas (recomendado para modelos lineales).
+        Si es True, escala las variables numéricas según `scaler_type`.
+    scaler_type : {'robust', 'standard', 'minmax', 'none'}, default='robust'
+        Tipo de escalador numérico interno al fold. Por defecto 'robust' (RobustScaler),
+        alineado con la preservación de outliers documentada en la metodología (O-24).
     one_hot : bool, default=True
         Si es True, aplica OneHotEncoder agrupando categorías con frecuencia < min_category_frequency (< 1%).
         Si es False, aplica OrdinalEncoder (para árboles nativos).
@@ -189,10 +212,18 @@ def build_preprocessor(
     if categorical_cols is None:
         categorical_cols = CATEGORICAL_COLS
 
-    # Rama Numérica: imputación por mediana general + escalamiento robusto
+    # Rama Numérica: imputación por mediana general + escalamiento interno al fold
     num_steps = [("imputer", SimpleImputer(strategy="median"))]
-    if scale_numeric:
-        num_steps.append(("scaler", RobustScaler()))
+    if scale_numeric and scaler_type != "none":
+        st = scaler_type.lower()
+        if st == "robust":
+            num_steps.append(("scaler", RobustScaler()))
+        elif st == "standard":
+            num_steps.append(("scaler", StandardScaler()))
+        elif st == "minmax":
+            num_steps.append(("scaler", MinMaxScaler()))
+        else:
+            raise ValueError(f"scaler_type no soportado: {scaler_type}")
     num_pipe = Pipeline(num_steps)
 
     # Rama Categórica: categoría sentinela -1.0 ("desconocido") + One-Hot con agrupación de infrecuentes
@@ -228,7 +259,10 @@ def build_preprocessor(
 
 def build_full_pipeline(
     estimator,
+    numeric_cols: Optional[List[str]] = None,
+    categorical_cols: Optional[List[str]] = None,
     scale_numeric: bool = True,
+    scaler_type: str = "robust",
     one_hot: bool = True,
     min_category_frequency: Union[int, float] = 0.01,
 ) -> Pipeline:
@@ -240,7 +274,10 @@ def build_full_pipeline(
     """
     cleaner = SecondaryHouseholdImputer()
     preprocessor = build_preprocessor(
+        numeric_cols=numeric_cols,
+        categorical_cols=categorical_cols,
         scale_numeric=scale_numeric,
+        scaler_type=scaler_type,
         one_hot=one_hot,
         min_category_frequency=min_category_frequency,
     )
