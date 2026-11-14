@@ -27,11 +27,10 @@ from src.io_enaho import (
 def build_master_dataset(
     year: int,
     data_root: Union[str, Path] = "Data",
-    purge_panel_2025: bool = True,
     sep: Optional[str] = None,
 ) -> pd.DataFrame:
     """
-    Construye el Big DataFrame a nivel hogar para un año específico.
+    Construye el Big DataFrame a nivel hogar para un año específico (unión pura, sin purgas).
 
     Parámetros
     ----------
@@ -39,16 +38,13 @@ def build_master_dataset(
         Año de la encuesta ENAHO (ej. 2024 o 2025).
     data_root : str | Path, default="Data"
         Directorio raíz donde residen las carpetas de datos.
-    purge_panel_2025 : bool, default=True
-        Si es True y year == 2025, purga los hogares panel que se repiten con 2024
-        para garantizar evaluación fuera de tiempo (OOT) independiente.
     sep : str | None, default=None
         Delimitador de los archivos CSV (por defecto detecta o usa el del año).
 
     Retorna
     -------
     pd.DataFrame
-        DataFrame consolidado a nivel hogar con las variables de los 5 módulos.
+        DataFrame consolidado a nivel hogar con las variables de los 5 módulos y columna 'year'.
     """
     data_root = Path(data_root)
     mods = load_all_raw_modules(year, data_root=data_root, sep=sep)
@@ -139,31 +135,56 @@ def build_master_dataset(
     # -------------------------------------------------------------------------
     df["personas_por_hab"] = df["n_miembros"] / df["total_habitaciones"].clip(lower=1)
     df["ocupados_por_miembro"] = (df["n_ocupados"].fillna(0) / df["n_miembros"].clip(lower=1)).clip(lower=0.0, upper=1.0)
-    df["anio_encuesta"] = year
+    df["year"] = int(year)
 
     master_df = df.reset_index()
-
-    # -------------------------------------------------------------------------
-    # 6. Purga de Panel Longitudinal (OOT) para 2025 si fue solicitada
-    # -------------------------------------------------------------------------
-    if year == 2025 and purge_panel_2025:
-        m34_2024 = load_modulo34(2024, data_root=data_root)
-        panel_keys = m34_2024[KEY_HOGAR].merge(master_df[KEY_HOGAR], on=KEY_HOGAR)
-        n_panel = len(panel_keys)
-        master_df = master_df.merge(panel_keys.assign(_panel=1), on=KEY_HOGAR, how="left")
-        master_df = master_df[master_df["_panel"].isna()].drop(columns=["_panel"]).reset_index(drop=True)
-        print(f"[build_master_dataset 2025] Purga de panel: {n_panel:,d} hogares repetidos eliminados.")
-
     return master_df
+
+
+def build_combined_dataset(
+    years: Tuple[int, ...] = (2024, 2025),
+    data_root: Union[str, Path] = "Data",
+    sep: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Construye y concatena el Big DataFrame unificado multi-año (sin purgas ni alteraciones).
+    Incluye la columna 'year' para análisis temporal y detección de panel en el EDA.
+    """
+    frames = [build_master_dataset(yr, data_root=data_root, sep=sep) for yr in years]
+    return pd.concat(frames, ignore_index=True)
+
+
+def split_oot_train_test(
+    df_all: pd.DataFrame,
+    train_year: int = 2024,
+    test_year: int = 2025,
+    purge_panel: bool = True,
+    verbose: bool = True,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Separa el Big DataFrame unificado en Train (train_year) y Test OOT (test_year),
+    purgando en test_year los hogares panel repetidos que ya aparecen en train_year.
+    """
+    df_train = df_all[df_all["year"] == train_year].reset_index(drop=True).copy()
+    df_test = df_all[df_all["year"] == test_year].reset_index(drop=True).copy()
+
+    if purge_panel:
+        panel_keys = df_train[KEY_HOGAR].merge(df_test[KEY_HOGAR], on=KEY_HOGAR)
+        n_panel = len(panel_keys)
+        df_test = df_test.merge(panel_keys.assign(_panel=1), on=KEY_HOGAR, how="left")
+        df_test = df_test[df_test["_panel"].isna()].drop(columns=["_panel"]).reset_index(drop=True)
+        if verbose:
+            print(f"[split_oot_train_test] Purga de panel ({train_year}->{test_year}): {n_panel:,d} hogares repetidos eliminados de {test_year}.")
+
+    return df_train, df_test
 
 
 def load_train_test_master(
     data_root: Union[str, Path] = "Data"
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Carga y retorna conjuntamente (df_2024_train, df_2025_test) ya listos."""
-    df_2024 = build_master_dataset(2024, data_root=data_root, purge_panel_2025=False)
-    df_2025_test = build_master_dataset(2025, data_root=data_root, purge_panel_2025=True)
-    return df_2024, df_2025_test
+    """Construye el Big DataFrame multi-año (2024+2025) y retorna (df_2024_train, df_2025_test) purgado."""
+    df_all = build_combined_dataset(years=(2024, 2025), data_root=data_root)
+    return split_oot_train_test(df_all, train_year=2024, test_year=2025, purge_panel=True)
 
 
 def load_canonical_train_test(

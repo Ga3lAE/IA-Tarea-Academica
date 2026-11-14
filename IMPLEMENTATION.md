@@ -33,10 +33,10 @@ flowchart LR
 | Sprint | Descripción | Estado | Archivos Principales | Criterio de Éxito / Entregable |
 | :---: | :--- | :---: | :--- | :--- |
 | **1** | Ingesta modular directa de 5 módulos ENAHO (KISS) | **COMPLETADO** | `src/io_enaho.py` | Carga transparente de M01, M02, M03, M05 y M34 con autodetección de delimitador (`,` en 2024, `;` en 2025). |
-| **2** | Reducción $\Phi$, Big DataFrame y Purga de Panel | **COMPLETADO** | `src/dataset.py` | Consolidación relacional: Train 2024 ($N = 4{,}090$) y Test 2025 independiente ($N_{\text{test}} = 3{,}199$) tras purgar 930 hogares repetidos. |
+| **2** | Reducción $\Phi$ y Big DataFrame Multi-Año (`2024+2025`) | **COMPLETADO** | `src/dataset.py` | Consolidación relacional pura (`build_combined_dataset()`): $8{,}219$ hogares ($4{,}090$ de 2024 + $4{,}129$ de 2025) con columna `year`, sin purgar ni modificar filas. |
 | **3** | Sincronización y Gobernanza Documental | **COMPLETADO** | `README.md`, `IMPLEMENTATION.md` | Eliminación de referencias a clases abstractas legadas y documentación formal de OBS-P01/P02 y auditoría 18:33. |
-| **4** | Refinamiento de Ingesta y Agregaciones en Hogar | **COMPLETADO** | `src/dataset.py`, `src/io_enaho.py` | Resolución de inconsistencias RC-02, RC-06, RC-07, RC-08, RC-09 y RC-05 de la auditoría técnica. |
-| **5** | Preprocesamiento Anti-Fuga y Espacio $\mathbb{R}^{28}$ | **COMPLETADO** | `src/preprocessing.py` | Pipeline Scikit-Learn: imputación de 72 hogares por mediana de conglomerado censal (OBS-P01), categoría `"desconocido"` y One-Hot robusto (81 features, 0% NaNs). |
+| **4** | Refinamiento de Agregaciones y EDA Temporal/Panel | **COMPLETADO** | `src/dataset.py`, `src/io_enaho.py`, `notebooks/pipeline_completo.ipynb` | Resolución de RC-02 a RC-09, análisis temporal 2024 vs. 2025 y detección de los 930 hogares panel repetidos sobre el Big DF unificado antes de particionar. |
+| **5** | Partición OOT, Preprocesamiento Anti-Fuga y $\mathbb{R}^{28}$ | **COMPLETADO** | `src/dataset.py`, `src/preprocessing.py` | Partición explícita `split_oot_train_test()` (purga de 930 panel $\to$ Test $N=3{,}199$) y Pipeline Scikit-Learn sobre Train 2024 ($N=4{,}090$, 0% NaNs). |
 | **6** | Modelado Supervisado y Validación Cruzada Espacial | **SIGUIENTE PASO** | `src/models.py` | Entrenamiento de 5 modelos (PMT-MCO, ElasticNet, CART podado, Random Forest, LightGBM) bajo `GroupKFold(5)` por conglomerado censal. |
 | **7** | Evaluación Fuera de Tiempo, Inferencia y XAI | **PENDIENTE** | `src/evaluation.py` | Curvas EE-IE a $B=20\%$, contraste de $H_1$ a $H_4$ con 1,000 réplicas *Cluster Bootstrap*, y explicabilidad con TreeSHAP. |
 | **8** | Informe Académico Final en $\text{\LaTeX}$ ($\le 8$ páginas) | **PENDIENTE** | `Documentation/latex/main.tex`, `sections/*` | Documento final compilado con las Secciones 04 a 07 completas, sin advertencias y alineado a la rúbrica PUCP (meta: 20.0 / 20). |
@@ -105,15 +105,18 @@ Registrado en [`Documentation/Observaciones a levantar/log_cambios_2026-11-08_18
 ---
 
 ### Sprint 6: Modelado Supervisado y Validación Cruzada (`models.py`)
-1. **Suite de 5 Clasificadores:**
-   - **Línea Base Econométrica (PMT-MCO):** Modelo OLS sobre $\ln(\text{gasto})$, prediciendo pobreza si $\widehat{\ln(\text{gasto})} < \ln(\text{línea})$.
+1. **Preprocesamiento Diferenciado por Familia (Cero Fuga dentro de cada Fold):**
+   - **Lineales (`PMT-MCO`, `ElasticNet`):** `scale_numeric=True` (`RobustScaler`) + `OneHotEncoder(min_frequency=0.01)`. En `PMT-MCO` se usa `Ridge(alpha=1e-4)` (o `drop="first"`) para evitar colinealidad perfecta de las dummies sin perder equivalencia con MCO.
+   - **Árboles (`CART`, `Random Forest`, `LightGBM`):** `scale_numeric=False` (sin escalado, respetando invarianza monotónica) + `OneHotEncoder(min_frequency=0.01)` para compatibilidad uniforme con `TreeSHAP`.
+2. **Suite de 5 Clasificadores:**
+   - **Línea Base Econométrica (PMT-MCO):** Regresión sobre $\ln(\text{gasto})$, usando $-\widehat{\ln(\text{gasto})}$ como puntaje de pobreza (y corte $\widehat{\ln(\text{gasto})} < \ln(\text{línea})$).
    - **Regresión Logística ElasticNet:** Penalización $L_1/L_2$ con ponderación de clase sensible al costo ($\alpha$).
    - **Árbol de Decisión CART:** Poda por complejidad de costo ($\alpha_{\text{ccp}}$) para interpretabilidad directa.
-   - **Random Forest:** Ensamble de 300 árboles con submuestreo balanceado.
+   - **Random Forest:** Ensamble de 100–500 árboles con submuestreo y peso de clase $\alpha$.
    - **LightGBM:** Gradient Boosting con regularización $L_1/L_2$, `scale_pos_weight` parametrizado por $\alpha$.
-2. **Protocolo Espacial:**
-   - `GroupKFold(n_splits=5)` agrupado por `conglomerado` censal sobre la muestra 2024 ($N = 4{,}090$).
-   - Optimización de hiperparámetros con `GridSearchCV` orientada a maximizar PR-AUC.
+3. **Protocolo Espacial y Validación (2024):**
+   - `GroupKFold(n_splits=5)` agrupado por `conglomerado` censal sobre la muestra 2024 ($N = 4{,}090$), generando predicciones *Out-Of-Fold* (OOF) de validación para calibrar el umbral $\tau$ ($H_3$) sin tocar Test 2025.
+   - Optimización de hiperparámetros orientada a maximizar PR-AUC.
 
 ---
 
