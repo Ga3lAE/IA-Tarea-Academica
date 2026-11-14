@@ -5,24 +5,23 @@ Implementa la suite completa de modelos (5 principales del informe + familias ex
 de la literatura PMT y Machine Learning tabular) bajo validación cruzada agrupada
 `GroupKFold(n_splits=5)` por conglomerado censal sobre ENAHO 2024 (N = 4,090).
 
-Reglas metodológicas clave:
-1. Cero fuga espacial y de preprocesamiento: SecondaryHouseholdImputer, SimpleImputer,
-   escalador numérico y OneHotEncoder se ajustan estrictamente DENTRO de cada fold.
-2. Escalamiento diferenciado por familia:
-   - Modelos lineales, generativos, kernels, distancias y redes neuronales:
-     `scale_numeric=True, scaler_type="robust"` (RobustScaler por defecto, alineado con O-24;
-     incluye comparador explícito contra StandardScaler y MinMaxScaler).
-   - Modelos basados en árboles (CART, Random Forest, Extra Trees, Gradient Boosting):
-     `scale_numeric=False, scaler_type="none"` (invarianza monotónica).
-3. Aprendizaje sensible al costo (Elkan, 2001): peso de la clase pobre alpha in {1.0, 2.0, gamma}
-   optimizado por validación cruzada orientada a PR-AUC, sin doble compensación de umbral.
+Optimizaciones de Concurrencia y Rendimiento:
+1. Paralelismo multiproceso con `joblib.Parallel` (backend `loky`) tanto a nivel de candidatos
+   en el benchmark como a nivel de pliegues en la validación cruzada repetida (30 corridas).
+2. Control de hilos internos (`n_jobs=1` e `inner_max_num_threads=1` dentro de cada worker)
+   para eliminar la contención de hilos (*oversubscription*).
+3. Pre-cálculo por pliegue de las vistas preprocesadas (`robust_28`, `tree_28`, `viv_robust_11`,
+   `viv_tree_11`) estrictamente dentro de `tr_idx` (cero fuga de datos), evitando repetir
+   450+ veces la imputación por conglomerado y el One-Hot Encoding en un mismo fold.
 """
 import sys
+import time
 import warnings
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed, parallel_config
 
 from sklearn.base import clone
 from sklearn.model_selection import GroupKFold
@@ -60,11 +59,12 @@ from src.preprocessing import (
     VIVIENDA_FEATURES_12,
     TARGET_COL,
     GROUP_COL,
+    SecondaryHouseholdImputer,
+    build_preprocessor,
     build_full_pipeline,
     prepare_xy_data,
 )
 
-# Detectar disponibilidad de LightGBM nativo (requiere libomp en macOS)
 try:
     from lightgbm import LGBMClassifier
     HAS_LIGHTGBM = True
@@ -97,7 +97,6 @@ def compute_targeting_metrics(
     pr_auc = float(average_precision_score(y_arr, s_arr))
     roc_auc = float(roc_auc_score(y_arr, s_arr))
 
-    # Selección a cobertura presupuestal fija B (ej. top 20% con mayor puntaje)
     n = len(y_arr)
     k = int(round(budget_coverage * n))
     top_idx = np.argsort(-s_arr)[:k]
@@ -112,7 +111,6 @@ def compute_targeting_metrics(
     ee_b20 = float(fn_b / max(1, tp_b + fn_b))
     ie_b20 = float(fp_b / max(1, tp_b + fp_b))
 
-    # Curva Precision-Recall para F1_max y calibración operativa H3 (Recall >= 0.70)
     prec, rec, thresh = precision_recall_curve(y_arr, s_arr)
     f1_vals = 2.0 * prec * rec / np.clip(prec + rec, 1e-9, None)
     best_f1_idx = int(np.argmax(f1_vals))
@@ -129,7 +127,6 @@ def compute_targeting_metrics(
         rec_at_r70 = 0.0
         tau_r70 = 0.5
 
-    # Brier score sobre probabilidades en [0, 1]
     s_prob = np.clip(s_arr, 0.0, 1.0)
     brier = float(brier_score_loss(y_arr, s_prob))
 
@@ -146,10 +143,6 @@ def compute_targeting_metrics(
     }
 
 
-# =============================================================================
-# EVALUACIÓN ESPACIAL GROUPKFOLD(5) Y CALIBRACIÓN PLATT PARA PMT CONTINUO
-# =============================================================================
-
 def _calibrate_continuous_score_to_prob(
     neg_lngpc_train: np.ndarray,
     y_train: np.ndarray,
@@ -158,11 +151,94 @@ def _calibrate_continuous_score_to_prob(
     """
     Transforma el puntaje continuo (-ln_gasto_predicho) de PMT-MCO o PMT-Cuantílico
     en una probabilidad calibrada en [0, 1] mediante escalamiento logístico univariado
-    ajustado únicamente en el pliegue de entrenamiento (preserva el orden exacto del ranking).
+    ajustado únicamente en el pliegue de entrenamiento.
     """
     cal = LogisticRegression()
     cal.fit(neg_lngpc_train.reshape(-1, 1), y_train)
     return cal.predict_proba(neg_lngpc_eval.reshape(-1, 1))[:, 1]
+
+
+# =============================================================================
+# PRE-CÁLCULO ANTI-FUGA DE VISTAS POR PLIEGUE Y EVALUACIÓN CV
+# =============================================================================
+
+def _build_fold_view_dict(
+    X_full: pd.DataFrame,
+    X_viv: pd.DataFrame,
+    y_arr: np.ndarray,
+    y_lngpc_arr: np.ndarray,
+    tr_idx: np.ndarray,
+    val_idx: np.ndarray,
+) -> Dict[str, Any]:
+    """
+    Ajusta los transformadores anti-fuga una única vez sobre `tr_idx` y genera las
+    4 vistas de matrices listas para todos los modelos en ese pliegue:
+    - 'robust_28': 28 vars con RobustScaler + OneHotEncoder
+    - 'tree_28':   28 vars sin escalado + OneHotEncoder
+    - 'viv_robust_11': 11 vars M01 con RobustScaler + OneHotEncoder
+    - 'viv_tree_11':   11 vars M01 sin escalado + OneHotEncoder
+    """
+    # 1. Limpiador de hogares secundarios en 28 variables
+    cl_full = SecondaryHouseholdImputer()
+    X_tr_clean = cl_full.fit_transform(X_full.iloc[tr_idx])
+    X_val_clean = cl_full.transform(X_full.iloc[val_idx])
+
+    prep_rob28 = build_preprocessor(scale_numeric=True, scaler_type="robust", one_hot=True)
+    prep_tree28 = build_preprocessor(scale_numeric=False, scaler_type="none", one_hot=True)
+
+    # 2. Limpiador en 11 variables de Vivienda (M01)
+    cl_viv = SecondaryHouseholdImputer()
+    X_viv_tr_clean = cl_viv.fit_transform(X_viv.iloc[tr_idx])
+    X_viv_val_clean = cl_viv.transform(X_viv.iloc[val_idx])
+
+    prep_rob11 = build_preprocessor(
+        numeric_cols=VIVIENDA_NUMERIC_COLS,
+        categorical_cols=VIVIENDA_CATEGORICAL_COLS,
+        scale_numeric=True,
+        scaler_type="robust",
+        one_hot=True,
+    )
+    prep_tree11 = build_preprocessor(
+        numeric_cols=VIVIENDA_NUMERIC_COLS,
+        categorical_cols=VIVIENDA_CATEGORICAL_COLS,
+        scale_numeric=False,
+        scaler_type="none",
+        one_hot=True,
+    )
+
+    return {
+        "tr_idx": tr_idx,
+        "val_idx": val_idx,
+        "y_tr": y_arr[tr_idx],
+        "y_val": y_arr[val_idx],
+        "y_lngpc_tr": y_lngpc_arr[tr_idx],
+        "robust_28": (prep_rob28.fit_transform(X_tr_clean), prep_rob28.transform(X_val_clean)),
+        "tree_28": (prep_tree28.fit_transform(X_tr_clean), prep_tree28.transform(X_val_clean)),
+        "viv_robust_11": (prep_rob11.fit_transform(X_viv_tr_clean), prep_rob11.transform(X_viv_val_clean)),
+        "viv_tree_11": (prep_tree11.fit_transform(X_viv_tr_clean), prep_tree11.transform(X_viv_val_clean)),
+    }
+
+
+def _fit_predict_on_fold_view(
+    estimator,
+    fold_view: Dict[str, Any],
+    view_key: str,
+    is_continuous_pmt: bool,
+) -> np.ndarray:
+    """Ajusta un estimador sobre la vista precomputada del fold y retorna probabilidades en validación."""
+    est = clone(estimator)
+    X_tr_mat, X_val_mat = fold_view[view_key]
+    y_tr = fold_view["y_tr"]
+
+    if is_continuous_pmt:
+        y_c_tr = fold_view["y_lngpc_tr"]
+        est.fit(X_tr_mat, y_c_tr)
+        neg_tr = -est.predict(X_tr_mat)
+        neg_val = -est.predict(X_val_mat)
+        return _calibrate_continuous_score_to_prob(neg_tr, y_tr, neg_val)
+
+    est.fit(X_tr_mat, y_tr)
+    return est.predict_proba(X_val_mat)[:, 1]
 
 
 def evaluate_pipeline_cv(
@@ -175,11 +251,7 @@ def evaluate_pipeline_cv(
     y_continuous: Optional[pd.Series] = None,
 ) -> Tuple[np.ndarray, Dict[str, float], List[Dict[str, float]]]:
     """
-    Ejecuta validación cruzada espacial GroupKFold(n_splits=5) agrupada por conglomerado.
-    Retorna:
-    - oof_probs: vector de predicciones Out-Of-Fold (N,) sobre todo el conjunto 2024
-    - summary_metrics: diccionario con métricas OOF globales y media/desv entre folds
-    - fold_metrics: lista de métricas por cada uno de los 5 folds
+    Ejecuta validación cruzada espacial GroupKFold(n_splits=5) para un Pipeline arbitrario.
     """
     gkf = GroupKFold(n_splits=n_splits)
     oof_probs = np.zeros(len(y), dtype=float)
@@ -197,7 +269,6 @@ def evaluate_pipeline_cv(
             y_f_tr, y_f_val = y_arr[tr_idx], y_arr[val_idx]
 
             if is_continuous_pmt:
-                # Ajusta sobre ln(gasto per cápita) en el fold de entrenamiento
                 y_c_tr = y_cont_arr[tr_idx]
                 model_fold.fit(X_f_tr, y_c_tr)
                 neg_pred_tr = -model_fold.predict(X_f_tr)
@@ -228,16 +299,17 @@ def evaluate_pipeline_cv(
 def compare_scalers_cv(
     df_train: pd.DataFrame,
     n_splits: int = 5,
+    n_jobs: int = -1,
 ) -> pd.DataFrame:
     """
     Verifica empíricamente en GroupKFold(5) sobre ENAHO 2024 el efecto del escalador
-    numérico interno al fold ('robust', 'standard', 'minmax') en modelos sensibles a escala.
+    numérico interno al fold ('robust', 'standard', 'minmax') en paralelo.
     """
     X, y, groups = prepare_xy_data(df_train, features=CANONICAL_FEATURES_28)
     gamma = float((y == 0).sum() / (y == 1).sum())
     w_bal = {0: 1.0, 1: gamma}
 
-    rows = []
+    tasks = []
     for sc_type in ("robust", "standard", "minmax"):
         for model_label, est in [
             ("Logística ElasticNet", LogisticRegression(
@@ -248,36 +320,39 @@ def compare_scalers_cv(
                 hidden_layer_sizes=(64, 32), alpha=0.1, early_stopping=True,
                 max_iter=300, random_state=42
             )),
-            ("KNN (k=25)", KNeighborsClassifier(n_neighbors=25, weights="distance")),
+            ("KNN (k=25)", KNeighborsClassifier(n_neighbors=25, weights="distance", n_jobs=1)),
         ]:
-            pipe = build_full_pipeline(
-                est,
-                scale_numeric=True,
-                scaler_type=sc_type,
-                one_hot=True,
-            )
-            _, summary, _ = evaluate_pipeline_cv(pipe, X, y, groups, n_splits=n_splits)
-            rows.append({
-                "Modelo": model_label,
-                "Escalador_Interno": sc_type,
-                "PR_AUC_OOF": round(summary["PR_AUC"], 4),
-                "PR_AUC_Mean": round(summary["PR_AUC_Fold_Mean"], 4),
-                "PR_AUC_Std": round(summary["PR_AUC_Fold_Std"], 4),
-                "ROC_AUC_OOF": round(summary["ROC_AUC"], 4),
-                "EE_B20_OOF": round(summary["EE_B20"], 4),
-            })
+            tasks.append((sc_type, model_label, est))
+
+    def _run_one(sc_type, model_label, est):
+        pipe = build_full_pipeline(est, scale_numeric=True, scaler_type=sc_type, one_hot=True)
+        _, summary, _ = evaluate_pipeline_cv(pipe, X, y, groups, n_splits=n_splits)
+        return {
+            "Modelo": model_label,
+            "Escalador_Interno": sc_type,
+            "PR_AUC_OOF": round(summary["PR_AUC"], 4),
+            "PR_AUC_Mean": round(summary["PR_AUC_Fold_Mean"], 4),
+            "PR_AUC_Std": round(summary["PR_AUC_Fold_Std"], 4),
+            "ROC_AUC_OOF": round(summary["ROC_AUC"], 4),
+            "EE_B20_OOF": round(summary["EE_B20"], 4),
+        }
+
+    with parallel_config(backend="loky", inner_max_num_threads=1):
+        rows = Parallel(n_jobs=n_jobs)(delayed(_run_one)(s, m, e) for s, m, e in tasks)
     return pd.DataFrame(rows)
 
 
 # =============================================================================
-# CATÁLOGO DE MODELOS Y OPTIMIZACIÓN COST-SENSITIVE POR GROUPKFOLD(5)
+# CATÁLOGO DE MODELOS (CON n_jobs=1 INTERNO PARA PARALELISMO EXTERNO LIMPIO)
 # =============================================================================
 
-def _make_gbdt_estimator(alpha_weight: float, learning_rate: float = 0.05, num_leaves: int = 15, min_child: int = 30):
-    """
-    Retorna LightGBM nativo si libomp está presente, o HistGradientBoostingClassifier
-    (implementación equivalente en Scikit-Learn de árboles por histogramas leaf-wise).
-    """
+def _make_gbdt_estimator(
+    alpha_weight: float,
+    learning_rate: float = 0.05,
+    num_leaves: int = 15,
+    min_child: int = 30,
+    n_jobs: int = 1,
+):
     if HAS_LIGHTGBM:
         return LGBMClassifier(
             n_estimators=250,
@@ -290,7 +365,7 @@ def _make_gbdt_estimator(alpha_weight: float, learning_rate: float = 0.05, num_l
             reg_lambda=1.0,
             scale_pos_weight=alpha_weight,
             random_state=42,
-            n_jobs=-1,
+            n_jobs=n_jobs,
             verbose=-1,
         )
     return HistGradientBoostingClassifier(
@@ -306,439 +381,299 @@ def _make_gbdt_estimator(alpha_weight: float, learning_rate: float = 0.05, num_l
 
 def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
     """
-    Define el registro completo de modelos candidatos a evaluar en GroupKFold(5).
-    Incluye búsqueda sobre el hiperparámetro de costo alpha in {1.0, 2.0, gamma}
-    y regularización estructural en las 5 familias principales + modelos extendidos.
+    Define el registro completo de las 78 configuraciones candidatas de las 16 familias/modelos.
+    Cada candidato especifica su `view_key` ('robust_28', 'tree_28', 'viv_robust_11', 'viv_tree_11')
+    y su `estimator` con `n_jobs=1` para permitir paralelismo multiproceso externo sin contención.
     """
     alphas = [1.0, 2.0, round(gamma, 4)]
     candidates: List[Dict[str, Any]] = []
 
-    # -------------------------------------------------------------------------
-    # 1. BASELINES DE REPRESENTACIÓN (SOLO VIVIENDA - MÓDULO 01, 12 VARS) -> H1
-    # -------------------------------------------------------------------------
+    def _add(name, family, config_desc, alpha, is_cont, features, view_key, est, scale_num, sc_type):
+        num_c = VIVIENDA_NUMERIC_COLS if len(features) == len(VIVIENDA_FEATURES_12) else NUMERIC_COLS
+        cat_c = VIVIENDA_CATEGORICAL_COLS if len(features) == len(VIVIENDA_FEATURES_12) else CATEGORICAL_COLS
+        candidates.append({
+            "name": name,
+            "family": family,
+            "config_desc": config_desc,
+            "alpha": alpha,
+            "is_continuous_pmt": is_cont,
+            "features": features,
+            "view_key": view_key,
+            "estimator": est,
+            "pipe": build_full_pipeline(
+                est,
+                numeric_cols=num_c,
+                categorical_cols=cat_c,
+                scale_numeric=scale_num,
+                scaler_type=sc_type,
+                one_hot=True,
+            ),
+        })
+
+    # 1. Baselines de Representación Solo Vivienda (M01, 11 vars) -> H1
     for a in alphas:
-        candidates.append({
-            "name": "Logistica_Solo_Vivienda",
-            "family": "01_Baseline_Vivienda (H1)",
-            "config_desc": f"C=0.5, l1=0.5, alpha={a:.2f}",
-            "alpha": a,
-            "is_continuous_pmt": False,
-            "features": VIVIENDA_FEATURES_12,
-            "pipe": build_full_pipeline(
-                LogisticRegression(
-                    penalty="elasticnet", solver="saga", C=0.5, l1_ratio=0.5,
-                    class_weight={0: 1.0, 1: a}, max_iter=1500, random_state=42
-                ),
-                numeric_cols=VIVIENDA_NUMERIC_COLS,
-                categorical_cols=VIVIENDA_CATEGORICAL_COLS,
-                scale_numeric=True,
-                scaler_type="robust",
-                one_hot=True,
-            ),
-        })
+        est = LogisticRegression(
+            penalty="elasticnet", solver="saga", C=0.5, l1_ratio=0.5,
+            class_weight={0: 1.0, 1: a}, max_iter=1500, random_state=42
+        )
+        _add("Logistica_Solo_Vivienda", "01_Baseline_Vivienda (H1)", f"C=0.5, l1=0.5, alpha={a:.2f}",
+             a, False, VIVIENDA_FEATURES_12, "viv_robust_11", est, True, "robust")
 
-    candidates.append({
-        "name": "RF_Solo_Vivienda",
-        "family": "01_Baseline_Vivienda (H1)",
-        "config_desc": f"n=300, max_depth=8, min_leaf=15, alpha={gamma:.2f}",
-        "alpha": round(gamma, 4),
-        "is_continuous_pmt": False,
-        "features": VIVIENDA_FEATURES_12,
-        "pipe": build_full_pipeline(
-            RandomForestClassifier(
-                n_estimators=300, max_depth=8, min_samples_leaf=15,
-                class_weight={0: 1.0, 1: gamma}, n_jobs=-1, random_state=42
-            ),
-            numeric_cols=VIVIENDA_NUMERIC_COLS,
-            categorical_cols=VIVIENDA_CATEGORICAL_COLS,
-            scale_numeric=False,
-            scaler_type="none",
-            one_hot=True,
-        ),
-    })
+    est_rf_viv = RandomForestClassifier(
+        n_estimators=300, max_depth=8, min_samples_leaf=15,
+        class_weight={0: 1.0, 1: gamma}, n_jobs=1, random_state=42
+    )
+    _add("RF_Solo_Vivienda", "01_Baseline_Vivienda (H1)", f"n=300, max_depth=8, min_leaf=15, alpha={gamma:.2f}",
+         round(gamma, 4), False, VIVIENDA_FEATURES_12, "viv_tree_11", est_rf_viv, False, "none")
 
-    # -------------------------------------------------------------------------
-    # 2. FAMILIA ECONOMÉTRICA PMT CONTINUA (PREDICE ln(gasto) EN R^28)
-    # -------------------------------------------------------------------------
+    # 2. Familia Econométrica PMT Continua (ln(gasto) en R^28)
     for ridge_a in [1e-4, 1.0, 10.0]:
-        candidates.append({
-            "name": "PMT_MCO",
-            "family": "02_Econometrico_PMT",
-            "config_desc": f"OLS/Ridge(alpha={ridge_a}) sobre ln(gasto)",
-            "alpha": 1.0,
-            "is_continuous_pmt": True,
-            "features": CANONICAL_FEATURES_28,
-            "pipe": build_full_pipeline(
-                Ridge(alpha=ridge_a, random_state=42),
-                scale_numeric=True,
-                scaler_type="robust",
-                one_hot=True,
-            ),
-        })
+        _add("PMT_MCO", "02_Econometrico_PMT", f"OLS/Ridge(alpha={ridge_a}) sobre ln(gasto)",
+             1.0, True, CANONICAL_FEATURES_28, "robust_28", Ridge(alpha=ridge_a, random_state=42), True, "robust")
 
-    candidates.append({
-        "name": "PMT_Quantile_20",
-        "family": "02_Econometrico_PMT",
-        "config_desc": "QuantileRegressor(q=0.20, alpha=0.01) sobre ln(gasto)",
-        "alpha": 1.0,
-        "is_continuous_pmt": True,
-        "features": CANONICAL_FEATURES_28,
-        "pipe": build_full_pipeline(
-            QuantileRegressor(quantile=0.20, alpha=0.01, solver="highs"),
-            scale_numeric=True,
-            scaler_type="robust",
-            one_hot=True,
-        ),
-    })
+    _add("PMT_Quantile_20", "02_Econometrico_PMT", "QuantileRegressor(q=0.20, alpha=0.01) sobre ln(gasto)",
+         1.0, True, CANONICAL_FEATURES_28, "robust_28",
+         QuantileRegressor(quantile=0.20, alpha=0.01, solver="highs"), True, "robust")
 
-    # -------------------------------------------------------------------------
-    # 3. FAMILIA LINEAL Y GENERATIVA (R^28, ROBUST SCALER INTERNO)
-    # -------------------------------------------------------------------------
+    # 3. Familia Lineal y Generativa (R^28, RobustScaler)
     for a in alphas:
         for c_val in [0.05, 0.2, 1.0]:
             for l1_val in [0.0, 0.5, 1.0]:
-                candidates.append({
-                    "name": "Logistica_ElasticNet",
-                    "family": "03_Lineal_Regularizado",
-                    "config_desc": f"C={c_val}, l1_ratio={l1_val}, alpha={a:.2f}",
-                    "alpha": a,
-                    "is_continuous_pmt": False,
-                    "features": CANONICAL_FEATURES_28,
-                    "pipe": build_full_pipeline(
-                        LogisticRegression(
-                            penalty="elasticnet", solver="saga", C=c_val, l1_ratio=l1_val,
-                            class_weight={0: 1.0, 1: a}, max_iter=1500, random_state=42
-                        ),
-                        scale_numeric=True,
-                        scaler_type="robust",
-                        one_hot=True,
-                    ),
-                })
+                est = LogisticRegression(
+                    penalty="elasticnet", solver="saga", C=c_val, l1_ratio=l1_val,
+                    class_weight={0: 1.0, 1: a}, max_iter=1500, random_state=42
+                )
+                _add("Logistica_ElasticNet", "03_Lineal_Regularizado",
+                     f"C={c_val}, l1_ratio={l1_val}, alpha={a:.2f}",
+                     a, False, CANONICAL_FEATURES_28, "robust_28", est, True, "robust")
 
-    candidates.append({
-        "name": "LDA",
-        "family": "03_Lineal_Generativo",
-        "config_desc": "LinearDiscriminantAnalysis(solver='lsqr', shrinkage='auto')",
-        "alpha": 1.0,
-        "is_continuous_pmt": False,
-        "features": CANONICAL_FEATURES_28,
-        "pipe": build_full_pipeline(
-            LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto"),
-            scale_numeric=True,
-            scaler_type="robust",
-            one_hot=True,
-        ),
-    })
+    _add("LDA", "03_Lineal_Generativo", "LinearDiscriminantAnalysis(solver='lsqr', shrinkage='auto')",
+         1.0, False, CANONICAL_FEATURES_28, "robust_28",
+         LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto"), True, "robust")
 
-    candidates.append({
-        "name": "Naive_Bayes",
-        "family": "03_Lineal_Generativo",
-        "config_desc": "GaussianNB(var_smoothing=1e-2)",
-        "alpha": 1.0,
-        "is_continuous_pmt": False,
-        "features": CANONICAL_FEATURES_28,
-        "pipe": build_full_pipeline(
-            GaussianNB(var_smoothing=1e-2),
-            scale_numeric=True,
-            scaler_type="robust",
-            one_hot=True,
-        ),
-    })
+    _add("Naive_Bayes", "03_Lineal_Generativo", "GaussianNB(var_smoothing=1e-2)",
+         1.0, False, CANONICAL_FEATURES_28, "robust_28",
+         GaussianNB(var_smoothing=1e-2), True, "robust")
 
-    # -------------------------------------------------------------------------
-    # 4. FAMILIA ÁRBOLES Y BAGGING (R^28, SIN ESCALADO)
-    # -------------------------------------------------------------------------
+    # 4. Familia Árboles y Bagging (R^28, sin escalado)
     for a in alphas:
         for ccp in [0.001, 0.003, 0.006]:
-            candidates.append({
-                "name": "CART_Podado",
-                "family": "04_Arbol_Individual",
-                "config_desc": f"max_depth=6, min_leaf=25, ccp_alpha={ccp}, alpha={a:.2f}",
-                "alpha": a,
-                "is_continuous_pmt": False,
-                "features": CANONICAL_FEATURES_28,
-                "pipe": build_full_pipeline(
-                    DecisionTreeClassifier(
-                        max_depth=6, min_samples_leaf=25, ccp_alpha=ccp,
-                        class_weight={0: 1.0, 1: a}, random_state=42
-                    ),
-                    scale_numeric=False,
-                    scaler_type="none",
-                    one_hot=True,
-                ),
-            })
+            est = DecisionTreeClassifier(
+                max_depth=6, min_samples_leaf=25, ccp_alpha=ccp,
+                class_weight={0: 1.0, 1: a}, random_state=42
+            )
+            _add("CART_Podado", "04_Arbol_Individual",
+                 f"max_depth=6, min_leaf=25, ccp_alpha={ccp}, alpha={a:.2f}",
+                 a, False, CANONICAL_FEATURES_28, "tree_28", est, False, "none")
 
     for a in alphas:
         for depth in [8, 12]:
             for min_leaf in [10, 20]:
-                candidates.append({
-                    "name": "Random_Forest",
-                    "family": "05_Ensamble_Bagging",
-                    "config_desc": f"n=400, max_depth={depth}, min_leaf={min_leaf}, alpha={a:.2f}",
-                    "alpha": a,
-                    "is_continuous_pmt": False,
-                    "features": CANONICAL_FEATURES_28,
-                    "pipe": build_full_pipeline(
-                        RandomForestClassifier(
-                            n_estimators=400, max_depth=depth, min_samples_leaf=min_leaf,
-                            class_weight={0: 1.0, 1: a}, n_jobs=-1, random_state=42
-                        ),
-                        scale_numeric=False,
-                        scaler_type="none",
-                        one_hot=True,
-                    ),
-                })
+                est = RandomForestClassifier(
+                    n_estimators=400, max_depth=depth, min_samples_leaf=min_leaf,
+                    class_weight={0: 1.0, 1: a}, n_jobs=1, random_state=42
+                )
+                _add("Random_Forest", "05_Ensamble_Bagging",
+                     f"n=400, max_depth={depth}, min_leaf={min_leaf}, alpha={a:.2f}",
+                     a, False, CANONICAL_FEATURES_28, "tree_28", est, False, "none")
 
     for a in [1.0, round(gamma, 4)]:
-        candidates.append({
-            "name": "Extra_Trees",
-            "family": "05_Ensamble_Bagging",
-            "config_desc": f"n=400, max_depth=12, min_leaf=10, alpha={a:.2f}",
-            "alpha": a,
-            "is_continuous_pmt": False,
-            "features": CANONICAL_FEATURES_28,
-            "pipe": build_full_pipeline(
-                ExtraTreesClassifier(
-                    n_estimators=400, max_depth=12, min_samples_leaf=10,
-                    class_weight={0: 1.0, 1: a}, n_jobs=-1, random_state=42
-                ),
-                scale_numeric=False,
-                scaler_type="none",
-                one_hot=True,
-            ),
-        })
+        est = ExtraTreesClassifier(
+            n_estimators=400, max_depth=12, min_samples_leaf=10,
+            class_weight={0: 1.0, 1: a}, n_jobs=1, random_state=42
+        )
+        _add("Extra_Trees", "05_Ensamble_Bagging",
+             f"n=400, max_depth=12, min_leaf=10, alpha={a:.2f}",
+             a, False, CANONICAL_FEATURES_28, "tree_28", est, False, "none")
 
-    # -------------------------------------------------------------------------
-    # 5. FAMILIA GRADIENT BOOSTING (R^28, SIN ESCALADO)
-    # -------------------------------------------------------------------------
+    # 5. Familia Gradient Boosting (R^28, sin escalado)
     gbdt_engine = "LightGBM" if HAS_LIGHTGBM else "HistGBDT_LeafWise"
     for a in alphas:
         for lr in [0.03, 0.05]:
             for leaves in [15, 25]:
-                candidates.append({
-                    "name": "LightGBM_GBDT",
-                    "family": "06_Ensamble_Boosting",
-                    "config_desc": f"{gbdt_engine}(lr={lr}, leaves={leaves}, alpha={a:.2f})",
-                    "alpha": a,
-                    "is_continuous_pmt": False,
-                    "features": CANONICAL_FEATURES_28,
-                    "pipe": build_full_pipeline(
-                        _make_gbdt_estimator(alpha_weight=a, learning_rate=lr, num_leaves=leaves, min_child=30),
-                        scale_numeric=False,
-                        scaler_type="none",
-                        one_hot=True,
-                    ),
-                })
+                est = _make_gbdt_estimator(alpha_weight=a, learning_rate=lr, num_leaves=leaves, min_child=30, n_jobs=1)
+                _add("LightGBM_GBDT", "06_Ensamble_Boosting",
+                     f"{gbdt_engine}(lr={lr}, leaves={leaves}, alpha={a:.2f})",
+                     a, False, CANONICAL_FEATURES_28, "tree_28", est, False, "none")
 
-    candidates.append({
-        "name": "AdaBoost",
-        "family": "06_Ensamble_Boosting",
-        "config_desc": "AdaBoost(n=150, lr=0.1, base=CART_depth2)",
-        "alpha": 1.0,
-        "is_continuous_pmt": False,
-        "features": CANONICAL_FEATURES_28,
-        "pipe": build_full_pipeline(
-            AdaBoostClassifier(
-                estimator=DecisionTreeClassifier(max_depth=2, min_samples_leaf=20, random_state=42),
-                n_estimators=150,
-                learning_rate=0.1,
-                random_state=42,
-            ),
-            scale_numeric=False,
-            scaler_type="none",
-            one_hot=True,
-        ),
-    })
+    est_ada = AdaBoostClassifier(
+        estimator=DecisionTreeClassifier(max_depth=2, min_samples_leaf=20, random_state=42),
+        n_estimators=150, learning_rate=0.1, random_state=42
+    )
+    _add("AdaBoost", "06_Ensamble_Boosting", "AdaBoost(n=150, lr=0.1, base=CART_depth2)",
+         1.0, False, CANONICAL_FEATURES_28, "tree_28", est_ada, False, "none")
 
-    # -------------------------------------------------------------------------
-    # 6. FAMILIA KERNELS, VECINDAD Y REDES NEURONALES (ROBUST SCALER INTERNO)
-    # -------------------------------------------------------------------------
+    # 6. Familia Kernels, Vecindad y Redes Neuronales (RobustScaler)
     for a in [1.0, 2.0]:
-        candidates.append({
-            "name": "SVM_RBF",
-            "family": "07_NoLineal_Kernel_NN",
-            "config_desc": f"SVC(kernel='rbf', C=1.0, alpha={a:.2f})",
-            "alpha": a,
-            "is_continuous_pmt": False,
-            "features": CANONICAL_FEATURES_28,
-            "pipe": build_full_pipeline(
-                SVC(kernel="rbf", C=1.0, probability=True, class_weight={0: 1.0, 1: a}, random_state=42),
-                scale_numeric=True,
-                scaler_type="robust",
-                one_hot=True,
-            ),
-        })
+        est = SVC(kernel="rbf", C=1.0, probability=True, class_weight={0: 1.0, 1: a}, random_state=42)
+        _add("SVM_RBF", "07_NoLineal_Kernel_NN", f"SVC(kernel='rbf', C=1.0, alpha={a:.2f})",
+             a, False, CANONICAL_FEATURES_28, "robust_28", est, True, "robust")
 
-    candidates.append({
-        "name": "KNN",
-        "family": "07_NoLineal_Kernel_NN",
-        "config_desc": "KNeighbors(k=35, weights='distance')",
-        "alpha": 1.0,
-        "is_continuous_pmt": False,
-        "features": CANONICAL_FEATURES_28,
-        "pipe": build_full_pipeline(
-            KNeighborsClassifier(n_neighbors=35, weights="distance", n_jobs=-1),
-            scale_numeric=True,
-            scaler_type="robust",
-            one_hot=True,
-        ),
-    })
+    _add("KNN", "07_NoLineal_Kernel_NN", "KNeighbors(k=35, weights='distance')",
+         1.0, False, CANONICAL_FEATURES_28, "robust_28",
+         KNeighborsClassifier(n_neighbors=35, weights="distance", n_jobs=1), True, "robust")
 
-    candidates.append({
-        "name": "MLP_Red_Neuronal",
-        "family": "07_NoLineal_Kernel_NN",
-        "config_desc": "MLP(hidden=(64, 32), alpha_l2=0.5, early_stopping=True)",
-        "alpha": 1.0,
-        "is_continuous_pmt": False,
-        "features": CANONICAL_FEATURES_28,
-        "pipe": build_full_pipeline(
-            MLPClassifier(
-                hidden_layer_sizes=(64, 32), alpha=0.5, learning_rate_init=0.005,
-                early_stopping=True, max_iter=300, random_state=42
-            ),
-            scale_numeric=True,
-            scaler_type="robust",
-            one_hot=True,
-        ),
-    })
+    _add("MLP_Red_Neuronal", "07_NoLineal_Kernel_NN", "MLP(hidden=(64, 32), alpha_l2=0.5, early_stopping=True)",
+         1.0, False, CANONICAL_FEATURES_28, "robust_28",
+         MLPClassifier(
+             hidden_layer_sizes=(64, 32), alpha=0.5, learning_rate_init=0.005,
+             early_stopping=True, max_iter=300, random_state=42
+         ), True, "robust")
 
-    # -------------------------------------------------------------------------
-    # 7. META-ENSAMBLE (STACKING MULTIFAMILIA)
-    # -------------------------------------------------------------------------
+    # 7. Meta-Ensamble (Stacking Multifamilia)
     stack_est = StackingClassifier(
         estimators=[
             ("lr", LogisticRegression(penalty="elasticnet", solver="saga", C=0.2, l1_ratio=0.5, max_iter=1200, random_state=42)),
-            ("rf", RandomForestClassifier(n_estimators=300, max_depth=10, min_samples_leaf=15, n_jobs=-1, random_state=42)),
-            ("et", ExtraTreesClassifier(n_estimators=300, max_depth=12, min_samples_leaf=15, n_jobs=-1, random_state=42)),
-            ("gb", _make_gbdt_estimator(alpha_weight=1.0, learning_rate=0.03, num_leaves=15, min_child=30)),
+            ("rf", RandomForestClassifier(n_estimators=300, max_depth=10, min_samples_leaf=15, n_jobs=1, random_state=42)),
+            ("et", ExtraTreesClassifier(n_estimators=300, max_depth=12, min_samples_leaf=15, n_jobs=1, random_state=42)),
+            ("gb", _make_gbdt_estimator(alpha_weight=1.0, learning_rate=0.03, num_leaves=15, min_child=30, n_jobs=1)),
         ],
         final_estimator=LogisticRegression(C=1.0, random_state=42),
         cv=3,
-        n_jobs=-1,
+        n_jobs=1,
     )
-    candidates.append({
-        "name": "Stacking_Ensemble",
-        "family": "08_Meta_Ensamble",
-        "config_desc": "Stacking(ElasticNet + RF + ExtraTrees + GBDT -> Logit)",
-        "alpha": 1.0,
-        "is_continuous_pmt": False,
-        "features": CANONICAL_FEATURES_28,
-        "pipe": build_full_pipeline(
-            stack_est,
-            scale_numeric=True,
-            scaler_type="robust",
-            one_hot=True,
-        ),
-    })
+    _add("Stacking_Ensemble", "08_Meta_Ensamble", "Stacking(ElasticNet + RF + ExtraTrees + GBDT -> Logit)",
+         1.0, False, CANONICAL_FEATURES_28, "robust_28", stack_est, True, "robust")
 
     return candidates
+
+
+def _evaluate_candidate_on_precomputed_folds(
+    cand: Dict[str, Any],
+    fold_views: List[Dict[str, Any]],
+    y_arr: np.ndarray,
+) -> Dict[str, Any]:
+    """Worker paralelo que evalúa un candidato sobre las vistas ya precomputadas de los K folds."""
+    oof_probs = np.zeros(len(y_arr), dtype=float)
+    fold_list = []
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fold_idx, fv in enumerate(fold_views, start=1):
+            probs_val = _fit_predict_on_fold_view(
+                cand["estimator"],
+                fv,
+                view_key=cand["view_key"],
+                is_continuous_pmt=cand["is_continuous_pmt"],
+            )
+            oof_probs[fv["val_idx"]] = probs_val
+            m_fold = compute_targeting_metrics(fv["y_val"], probs_val)
+            m_fold["fold"] = fold_idx
+            fold_list.append(m_fold)
+
+    summary = compute_targeting_metrics(y_arr, oof_probs)
+    summary["PR_AUC_Fold_Mean"] = float(np.mean([m["PR_AUC"] for m in fold_list]))
+    summary["PR_AUC_Fold_Std"] = float(np.std([m["PR_AUC"] for m in fold_list], ddof=1))
+    summary["EE_B20_Fold_Mean"] = float(np.mean([m["EE_B20"] for m in fold_list]))
+    summary["EE_B20_Fold_Std"] = float(np.std([m["EE_B20"] for m in fold_list], ddof=1))
+
+    row = {
+        "Modelo": cand["name"],
+        "Familia": cand["family"],
+        "Configuracion": cand["config_desc"],
+        "Alpha_Costo": cand["alpha"],
+        "N_Vars_Base": len(cand["features"]),
+        "PR_AUC_OOF": summary["PR_AUC"],
+        "PR_AUC_Mean": summary["PR_AUC_Fold_Mean"],
+        "PR_AUC_Std": summary["PR_AUC_Fold_Std"],
+        "ROC_AUC_OOF": summary["ROC_AUC"],
+        "EE_B20_OOF": summary["EE_B20"],
+        "IE_B20_OOF": summary["IE_B20"],
+        "F1_Max_OOF": summary["F1_Max"],
+        "Prec_at_Rec70_OOF": summary["Prec_at_Rec70"],
+        "Tau_Rec70_2024": summary["Tau_Rec70"],
+        "Brier_OOF": summary["Brier"],
+    }
+    return {
+        "cand": cand,
+        "oof_probs": oof_probs,
+        "metrics_cv": summary,
+        "fold_metrics": fold_list,
+        "row": row,
+    }
 
 
 def run_spatial_cv_benchmark(
     df_train: pd.DataFrame,
     n_splits: int = 5,
+    n_jobs: int = -1,
     verbose: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, Dict[str, Dict[str, Any]]]:
     """
-    Ejecuta la búsqueda de hiperparámetros/alpha y comparación de modelos bajo
+    Ejecuta en paralelo la búsqueda de hiperparámetros/alpha y comparación de modelos bajo
     GroupKFold(n_splits=5) por conglomerado censal en ENAHO 2024 (N = 4,090).
-
-    Retorna:
-    - best_models_df: Tabla resumen del mejor modelo de cada tipo ordenado por PR-AUC OOF.
-    - all_configs_df: Tabla completa con todas las configuraciones evaluadas.
-    - fitted_best_artifacts: Diccionario por nombre de modelo con:
-        * 'pipe': pipeline reentrenado sobre todo ENAHO 2024
-        * 'calibrator': calibrador Platt (si es PMT continuo) ajustado en 2024
-        * 'oof_probs': predicciones Out-Of-Fold (4,090,) en 2024
-        * 'metrics_cv': diccionario de métricas OOF y de folds
-        * 'features': lista de variables de entrada utilizadas
-        * 'config_desc': descripción de hiperparámetros ganadores
-        * 'alpha': peso de clase seleccionado
     """
+    t0 = time.perf_counter()
     X_full, y, groups = prepare_xy_data(df_train, features=CANONICAL_FEATURES_28)
     X_viv, _, _ = prepare_xy_data(df_train, features=VIVIENDA_FEATURES_12)
-    y_lngpc = df_train["lngpc"].copy()
+    y_arr = y.values
+    y_lngpc_arr = df_train["lngpc"].values
+    grp_arr = groups.values
 
-    gamma = float((y == 0).sum() / (y == 1).sum())
+    gamma = float((y_arr == 0).sum() / (y_arr == 1).sum())
     candidates = build_candidate_registry(gamma=gamma)
 
-    all_rows = []
-    best_by_name: Dict[str, Dict[str, Any]] = {}
-
     if verbose:
-        print(f"[run_spatial_cv_benchmark] Evaluando {len(candidates)} configuraciones en GroupKFold({n_splits}) sobre {len(y):,d} hogares...")
-
-    for cand in candidates:
-        name = cand["name"]
-        X_in = X_viv if len(cand["features"]) == len(VIVIENDA_FEATURES_12) else X_full
-        oof_probs, summary, fold_list = evaluate_pipeline_cv(
-            cand["pipe"],
-            X=X_in,
-            y=y,
-            groups=groups,
-            n_splits=n_splits,
-            is_continuous_pmt=cand["is_continuous_pmt"],
-            y_continuous=y_lngpc if cand["is_continuous_pmt"] else None,
+        print(
+            f"[run_spatial_cv_benchmark] Pre-calculando vistas de {n_splits} pliegues y evaluando "
+            f"{len(candidates)} configuraciones en paralelo (n_jobs={n_jobs})..."
         )
 
-        row = {
-            "Modelo": name,
-            "Familia": cand["family"],
-            "Configuracion": cand["config_desc"],
-            "Alpha_Costo": cand["alpha"],
-            "N_Vars_Base": len(cand["features"]),
-            "PR_AUC_OOF": summary["PR_AUC"],
-            "PR_AUC_Mean": summary["PR_AUC_Fold_Mean"],
-            "PR_AUC_Std": summary["PR_AUC_Fold_Std"],
-            "ROC_AUC_OOF": summary["ROC_AUC"],
-            "EE_B20_OOF": summary["EE_B20"],
-            "IE_B20_OOF": summary["IE_B20"],
-            "F1_Max_OOF": summary["F1_Max"],
-            "Prec_at_Rec70_OOF": summary["Prec_at_Rec70"],
-            "Tau_Rec70_2024": summary["Tau_Rec70"],
-            "Brier_OOF": summary["Brier"],
-        }
-        all_rows.append(row)
+    gkf = GroupKFold(n_splits=n_splits)
+    splits = list(gkf.split(X_full, y_arr, grp_arr))
 
-        # Seleccionar la mejor configuración de cada modelo según PR-AUC OOF
-        if (name not in best_by_name) or (summary["PR_AUC"] > best_by_name[name]["metrics_cv"]["PR_AUC"]):
-            best_by_name[name] = {
-                "cand": cand,
-                "oof_probs": oof_probs,
-                "metrics_cv": summary,
-                "fold_metrics": fold_list,
-                "row": row,
-            }
+    with parallel_config(backend="loky", inner_max_num_threads=1):
+        fold_views = Parallel(n_jobs=n_jobs)(
+            delayed(_build_fold_view_dict)(X_full, X_viv, y_arr, y_lngpc_arr, tr_idx, val_idx)
+            for tr_idx, val_idx in splits
+        )
+        results = Parallel(n_jobs=n_jobs)(
+            delayed(_evaluate_candidate_on_precomputed_folds)(cand, fold_views, y_arr)
+            for cand in candidates
+        )
 
-    # Reentrenar el mejor pipeline de cada modelo sobre el 100% de ENAHO 2024
-    fitted_best_artifacts: Dict[str, Dict[str, Any]] = {}
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        for name, info in best_by_name.items():
-            cand = info["cand"]
-            X_in = X_viv if len(cand["features"]) == len(VIVIENDA_FEATURES_12) else X_full
-            final_pipe = clone(cand["pipe"])
-            calibrator = None
+    all_rows = [r["row"] for r in results]
+    best_by_name: Dict[str, Dict[str, Any]] = {}
+    for res in results:
+        name = res["cand"]["name"]
+        if (name not in best_by_name) or (res["metrics_cv"]["PR_AUC"] > best_by_name[name]["metrics_cv"]["PR_AUC"]):
+            best_by_name[name] = res
+
+    # Reentrenar en paralelo los 16 modelos ganadores sobre el 100% de ENAHO 2024
+    def _fit_winner(name: str, info: Dict[str, Any]):
+        cand = info["cand"]
+        X_in = X_viv if len(cand["features"]) == len(VIVIENDA_FEATURES_12) else X_full
+        final_pipe = clone(cand["pipe"])
+        calibrator = None
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
             if cand["is_continuous_pmt"]:
-                final_pipe.fit(X_in, y_lngpc.values)
+                final_pipe.fit(X_in, y_lngpc_arr)
                 neg_pred_full = -final_pipe.predict(X_in)
                 calibrator = LogisticRegression()
-                calibrator.fit(neg_pred_full.reshape(-1, 1), y.values)
+                calibrator.fit(neg_pred_full.reshape(-1, 1), y_arr)
             else:
-                final_pipe.fit(X_in, y.values)
+                final_pipe.fit(X_in, y_arr)
+        return name, {
+            "pipe": final_pipe,
+            "estimator": cand["estimator"],
+            "view_key": cand["view_key"],
+            "calibrator": calibrator,
+            "is_continuous_pmt": cand["is_continuous_pmt"],
+            "features": cand["features"],
+            "family": cand["family"],
+            "config_desc": cand["config_desc"],
+            "alpha": cand["alpha"],
+            "oof_probs": info["oof_probs"],
+            "metrics_cv": info["metrics_cv"],
+            "fold_metrics": info["fold_metrics"],
+        }
 
-            fitted_best_artifacts[name] = {
-                "pipe": final_pipe,
-                "calibrator": calibrator,
-                "is_continuous_pmt": cand["is_continuous_pmt"],
-                "features": cand["features"],
-                "family": cand["family"],
-                "config_desc": cand["config_desc"],
-                "alpha": cand["alpha"],
-                "oof_probs": info["oof_probs"],
-                "metrics_cv": info["metrics_cv"],
-                "fold_metrics": info["fold_metrics"],
-            }
+    with parallel_config(backend="loky", inner_max_num_threads=1):
+        fitted_pairs = Parallel(n_jobs=n_jobs)(
+            delayed(_fit_winner)(name, info) for name, info in best_by_name.items()
+        )
+    fitted_best_artifacts = dict(fitted_pairs)
 
     all_configs_df = pd.DataFrame(all_rows).sort_values(by=["Modelo", "PR_AUC_OOF"], ascending=[True, False]).reset_index(drop=True)
     best_models_df = (
@@ -747,8 +682,9 @@ def run_spatial_cv_benchmark(
         .reset_index(drop=True)
     )
 
+    elapsed = time.perf_counter() - t0
     if verbose:
-        print(f"✓ Benchmark CV 2024 completado ({len(best_models_df)} modelos únicos seleccionados).")
+        print(f"✓ Benchmark CV 2024 completado en {elapsed:.2f} s ({len(best_models_df)} modelos únicos seleccionados).")
 
     return best_models_df, all_configs_df, fitted_best_artifacts
 
@@ -774,7 +710,7 @@ def extract_cv_folds_dataframe(
 ) -> pd.DataFrame:
     """
     Extrae las métricas de cada uno de los 5 folds para todos los modelos ganadores
-    en formato largo (ideal para Boxplots de Validación Cruzada y análisis de estabilidad).
+    en formato largo.
     """
     rows = []
     for name, art in fitted_artifacts.items():
@@ -794,23 +730,65 @@ def extract_cv_folds_dataframe(
     return pd.DataFrame(rows)
 
 
+def _evaluate_one_split_all_models(
+    rep: int,
+    run_id: int,
+    tr_idx: np.ndarray,
+    val_idx: np.ndarray,
+    X_full: pd.DataFrame,
+    X_viv: pd.DataFrame,
+    y_arr: np.ndarray,
+    y_lngpc_arr: np.ndarray,
+    model_specs: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    Worker paralelo para un pliegue espacial `(rep, run_id)`:
+    1. Calcula una sola vez las 4 vistas preprocesadas del pliegue.
+    2. Entrena y evalúa los 16 modelos ganadores sobre esas vistas.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        fv = _build_fold_view_dict(X_full, X_viv, y_arr, y_lngpc_arr, tr_idx, val_idx)
+        out = []
+        for spec in model_specs:
+            probs_val = _fit_predict_on_fold_view(
+                spec["estimator"],
+                fv,
+                view_key=spec["view_key"],
+                is_continuous_pmt=spec["is_continuous_pmt"],
+            )
+            m = compute_targeting_metrics(fv["y_val"], probs_val)
+            out.append({
+                "Modelo": spec["name"],
+                "Familia": spec["family"],
+                "Repeticion": rep,
+                "Fold": run_id,
+                "PR_AUC": m["PR_AUC"],
+                "ROC_AUC": m["ROC_AUC"],
+                "EE_B20": m["EE_B20"],
+                "IE_B20": m["IE_B20"],
+                "F1_Max": m["F1_Max"],
+                "Prec_at_Rec70": m["Prec_at_Rec70"],
+                "Brier": m["Brier"],
+            })
+        return out
+
+
 def run_repeated_spatial_cv(
     fitted_artifacts: Dict[str, Dict[str, Any]],
     df_train: pd.DataFrame,
     n_splits: int = 5,
     n_repeats: int = 6,
     random_state: int = 42,
+    n_jobs: int = -1,
     verbose: bool = True,
 ) -> pd.DataFrame:
     """
-    Ejecuta Validación Cruzada Espacial Repetida (Repeated GroupKFold: n_repeats x n_splits
-    = 30 corridas por modelo por defecto) permutando aleatoriamente los 704 conglomerados
-    censales en cada repetición, garantizando que ningún conglomerado se divida entre
-    entrenamiento y validación.
-
-    Permite construir Boxplots densos (30 evaluaciones por modelo) y pruebas de hipótesis
-    pareadas (Wilcoxon / Friedman) con alta potencia estadística.
+    Ejecuta en paralelo Validación Cruzada Espacial Repetida (Repeated GroupKFold:
+    n_repeats x n_splits = 30 corridas por modelo) permutando aleatoriamente los 704
+    conglomerados censales en cada repetición.
     """
+    t0 = time.perf_counter()
     X_full, y, groups = prepare_xy_data(df_train, features=CANONICAL_FEATURES_28)
     X_viv, _, _ = prepare_xy_data(df_train, features=VIVIENDA_FEATURES_12)
     y_arr = y.values
@@ -820,62 +798,55 @@ def run_repeated_spatial_cv(
     unique_groups = np.unique(grp_arr)
     rng = np.random.default_rng(random_state)
 
-    total_runs = n_splits * n_repeats
+    # Extraer especificaciones ligeras de los 16 modelos ganadores
+    model_specs = []
+    for name, art in fitted_artifacts.items():
+        est = art.get("estimator", art["pipe"].named_steps["model"])
+        vkey = art.get("view_key")
+        if vkey is None:
+            is_viv = len(art["features"]) == len(VIVIENDA_FEATURES_12)
+            has_scaler = "scaler" in art["pipe"].named_steps["preprocessor"].named_transformers_["num"].named_steps
+            vkey = ("viv_robust_11" if has_scaler else "viv_tree_11") if is_viv else ("robust_28" if has_scaler else "tree_28")
+        model_specs.append({
+            "name": name,
+            "family": art["family"],
+            "estimator": est,
+            "view_key": vkey,
+            "is_continuous_pmt": art["is_continuous_pmt"],
+        })
+
+    split_tasks = []
+    for rep in range(1, n_repeats + 1):
+        perm_groups = rng.permutation(unique_groups)
+        group_to_fold = {g: (i % n_splits) for i, g in enumerate(perm_groups)}
+        fold_assignment = np.array([group_to_fold[g] for g in grp_arr])
+
+        for fold_idx in range(n_splits):
+            run_id = (rep - 1) * n_splits + (fold_idx + 1)
+            val_mask = fold_assignment == fold_idx
+            tr_idx = np.where(~val_mask)[0]
+            val_idx = np.where(val_mask)[0]
+            split_tasks.append((rep, run_id, tr_idx, val_idx))
+
+    total_runs = len(split_tasks)
     if verbose:
         print(
-            f"[run_repeated_spatial_cv] Ejecutando {n_repeats} repeticiones x {n_splits} folds "
-            f"= {total_runs} corridas espaciales por cada uno de los {len(fitted_artifacts)} modelos..."
+            f"[run_repeated_spatial_cv] Ejecutando en paralelo {total_runs} pliegues espaciales "
+            f"x {len(model_specs)} modelos = {total_runs * len(model_specs)} evaluaciones (n_jobs={n_jobs})..."
         )
 
-    rows = []
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        for rep in range(1, n_repeats + 1):
-            # Permutar los conglomerados y asignarlos a n_splits pliegues balanceados
-            perm_groups = rng.permutation(unique_groups)
-            group_to_fold = {g: (i % n_splits) for i, g in enumerate(perm_groups)}
-            fold_assignment = np.array([group_to_fold[g] for g in grp_arr])
+    with parallel_config(backend="loky", inner_max_num_threads=1):
+        nested_rows = Parallel(n_jobs=n_jobs)(
+            delayed(_evaluate_one_split_all_models)(
+                rep, run_id, tr_idx, val_idx, X_full, X_viv, y_arr, y_lngpc_arr, model_specs
+            )
+            for rep, run_id, tr_idx, val_idx in split_tasks
+        )
 
-            for fold_idx in range(n_splits):
-                run_id = (rep - 1) * n_splits + (fold_idx + 1)
-                val_mask = fold_assignment == fold_idx
-                tr_idx = np.where(~val_mask)[0]
-                val_idx = np.where(val_mask)[0]
-
-                y_f_tr, y_f_val = y_arr[tr_idx], y_arr[val_idx]
-
-                for name, art in fitted_artifacts.items():
-                    X_in = X_viv if len(art["features"]) == len(VIVIENDA_FEATURES_12) else X_full
-                    X_f_tr, X_f_val = X_in.iloc[tr_idx], X_in.iloc[val_idx]
-                    model_fold = clone(art["pipe"])
-
-                    if art["is_continuous_pmt"]:
-                        y_c_tr = y_lngpc_arr[tr_idx]
-                        model_fold.fit(X_f_tr, y_c_tr)
-                        neg_tr = -model_fold.predict(X_f_tr)
-                        neg_val = -model_fold.predict(X_f_val)
-                        probs_val = _calibrate_continuous_score_to_prob(neg_tr, y_f_tr, neg_val)
-                    else:
-                        model_fold.fit(X_f_tr, y_f_tr)
-                        probs_val = model_fold.predict_proba(X_f_val)[:, 1]
-
-                    m = compute_targeting_metrics(y_f_val, probs_val)
-                    rows.append({
-                        "Modelo": name,
-                        "Familia": art["family"],
-                        "Repeticion": rep,
-                        "Fold": run_id,
-                        "PR_AUC": m["PR_AUC"],
-                        "ROC_AUC": m["ROC_AUC"],
-                        "EE_B20": m["EE_B20"],
-                        "IE_B20": m["IE_B20"],
-                        "F1_Max": m["F1_Max"],
-                        "Prec_at_Rec70": m["Prec_at_Rec70"],
-                        "Brier": m["Brier"],
-                    })
-
+    rows = [item for sublist in nested_rows for item in sublist]
+    elapsed = time.perf_counter() - t0
     if verbose:
-        print(f"✓ Validación cruzada repetida completada: {len(rows):,d} evaluaciones generadas.")
+        print(f"✓ Validación cruzada repetida completada en {elapsed:.2f} s ({len(rows):,d} evaluaciones generadas).")
     return pd.DataFrame(rows)
 
 
@@ -891,7 +862,6 @@ def rank_models_by_folds(
     from scipy.stats import wilcoxon
 
     df_f = folds_df.copy()
-    n_runs = df_f["Fold"].nunique()
     df_f["Rank_PR_Fold"] = df_f.groupby("Fold")["PR_AUC"].rank(ascending=False, method="min")
     df_f["Rank_EE_Fold"] = df_f.groupby("Fold")["EE_B20"].rank(ascending=True, method="min")
 
@@ -913,7 +883,6 @@ def rank_models_by_folds(
     merged = best_models_df.merge(stats, on="Modelo", how="left")
     merged = merged.sort_values(by=["PR_AUC_Mediana", "PR_AUC_Mean_Runs"], ascending=[False, False]).reset_index(drop=True)
 
-    # Test de Wilcoxon pareado frente al modelo con mejor mediana de PR-AUC
     top_model = merged.loc[0, "Modelo"]
     top_scores = df_f[df_f["Modelo"] == top_model].sort_values("Fold")["PR_AUC"].values
     pvals = []
@@ -937,8 +906,8 @@ def plot_cv_boxplots(
     show: bool = True,
 ):
     """
-    Genera la figura de Boxplots comparativos de los 16 modelos sobre los 5 folds
-    de GroupKFold (Panel A: PR-AUC por fold; Panel B: Error de Exclusión EE a B=20%).
+    Genera la figura de Boxplots comparativos de los 16 modelos sobre las corridas
+    de GroupKFold (Panel A: PR-AUC por pliegue; Panel B: Error de Exclusión EE a B=20%).
     """
     import matplotlib.pyplot as plt
     import seaborn as sns
@@ -953,7 +922,6 @@ def plot_cv_boxplots(
     sns.set_theme(style="whitegrid")
     fig, axes = plt.subplots(1, 2, figsize=(15, 6.8), sharey=True)
 
-    # Panel A: Boxplot de PR-AUC en los 5 folds
     sns.boxplot(
         data=folds_df,
         x="PR_AUC",
@@ -975,14 +943,13 @@ def plot_cv_boxplots(
         ax=axes[0],
         color="black",
         alpha=0.55,
-        size=5,
-        jitter=0.12,
+        size=4.5,
+        jitter=0.15,
     )
-    axes[0].set_title("A. Distribución de PR-AUC en GroupKFold(5) (Mayor es mejor)", fontweight="bold", fontsize=11)
+    axes[0].set_title("A. Distribución de PR-AUC en GroupKFold (Mayor es mejor)", fontweight="bold", fontsize=11)
     axes[0].set_xlabel("PR-AUC por Pliegue (Con ♦ = Media, Línea = Mediana)")
     axes[0].set_ylabel("Modelo Supervisado")
 
-    # Panel B: Boxplot de Error de Exclusión a B=20% en los 5 folds
     sns.boxplot(
         data=folds_df,
         x="EE_B20",
@@ -1004,10 +971,10 @@ def plot_cv_boxplots(
         ax=axes[1],
         color="black",
         alpha=0.55,
-        size=5,
-        jitter=0.12,
+        size=4.5,
+        jitter=0.15,
     )
-    axes[1].set_title("B. Error de Exclusión (EE a B=20%) en GroupKFold(5) (Menor es mejor)", fontweight="bold", fontsize=11)
+    axes[1].set_title("B. Error de Exclusión (EE a B=20%) en GroupKFold (Menor es mejor)", fontweight="bold", fontsize=11)
     axes[1].set_xlabel("Error de Exclusión FN / (TP + FN) por Pliegue")
     axes[1].set_ylabel("")
 
@@ -1040,17 +1007,24 @@ def plot_cv_boxplots(
 if __name__ == "__main__":
     from src.dataset import load_train_test_master
 
-    print("=== Ejecución de Verificación del Sprint 6: src/models.py ===")
+    t_start = time.perf_counter()
+    print("=== Ejecución Paralela del Sprint 6: src/models.py ===")
     df_2024, _ = load_train_test_master()
 
-    print("\n1. Comparativa de Escaladores Internos al Fold (Robust vs Standard vs MinMax):")
+    print("\n1. Comparativa de Escaladores Internos al Fold (Paralelo):")
     scaler_df = compare_scalers_cv(df_2024)
     print(scaler_df.to_string(index=False))
 
-    print("\n2. Benchmark Completo de las 16 Familias/Modelos en GroupKFold(5) (ENAHO 2024):")
+    print("\n2. Benchmark Completo de las 78 Configuraciones / 16 Modelos en GroupKFold(5):")
     best_df, all_df, artifacts = run_spatial_cv_benchmark(df_2024)
-    cols_show = [
-        "Modelo", "Familia", "Alpha_Costo", "PR_AUC_OOF", "PR_AUC_Mean",
-        "PR_AUC_Std", "ROC_AUC_OOF", "EE_B20_OOF", "Prec_at_Rec70_OOF", "Configuracion"
+
+    print("\n3. Validación Cruzada Espacial Repetida (30 Corridas x 16 Modelos = 480 Evaluaciones):")
+    rep_df = run_repeated_spatial_cv(artifacts, df_2024, n_splits=5, n_repeats=6)
+    rank_df = rank_models_by_folds(rep_df, best_df)
+    cols = [
+        "Modelo", "N_Corridas", "PR_AUC_Mediana", "PR_AUC_IQR", "PR_AUC_Mean_Runs",
+        "PR_AUC_Std_Runs", "Rank_Medio_PR", "Veces_Top1_PR", "Veces_Top3_PR",
+        "Wilcoxon_p_vs_Top1", "EE_B20_Mediana", "EE_B20_IQR"
     ]
-    print(best_df[cols_show].to_string(index=False))
+    print(rank_df[cols].to_string(index=False))
+    print(f"\n⏱ Tiempo total extremo a extremo: {time.perf_counter() - t_start:.2f} s")
