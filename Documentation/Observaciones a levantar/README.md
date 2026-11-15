@@ -33,16 +33,19 @@ flowchart TD
         I16["Iteración 2026-11-11_10-55 [SUPERADA]\n(log_cambios_2026-11-11_10-55.md — Sprint 3: Documentación raíz y Sprint 4: Refinamiento de Ingesta y Agregaciones)"]
         I17["Iteración 2026-11-11_11-45 [SUPERADA]\n(log_cambios_2026-11-11_11-45.md — Sprint 5: Preprocesamiento Anti-Fuga R^28 y Subsanación Definitiva OBS-P01)"]
         I18["Iteración 2026-11-11_22-45 [SUPERADA]\n(log_cambios_2026-11-11_22-45.md — Protocolo de Limpieza de Datos, Cero Filas Eliminadas y Tratamiento de 15 Nulos)"]
-        I19["Iteración 2026-11-14_14-41 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-14_14-41.md — Big DF Multi-Año Unificado, EDA Temporal/Panel y Partición OOT Explícita)"]
+        I19["Iteración 2026-11-14_14-41 [SUPERADA]\n(log_cambios_2026-11-14_14-41.md — Big DF Multi-Año Unificado, EDA Temporal/Panel y Partición OOT Explícita)"]
+        I20["Iteración 2026-11-14_15-58 [SUPERADA]\n(log_cambios_2026-11-14_15-58.md — Sprint 6 Parte 1: 16 Modelos, Escaladores, 30 Corridas y Boxplots)"]
+        I21["Iteración 2026-11-14_16-32 [SUPERADA]\n(log_cambios_2026-11-14_16-32.md — Sprint 6 Parte 2: Concurrencia Multiproceso y Caché Anti-Fuga por Pliegue)"]
+        I22["Iteración 2026-11-14_17-05 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-14_17-05.md — Sprint 7: Evaluación Ciega OOT 2025, Cluster Bootstrap H1-H4, TreeSHAP y Equidad)"]
     end
 
     R -->|Gobierna| Historial
-    I19 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
+    I22 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
 ```
 
 > [!CAUTION]
 > **ESTADO DE LAS VERSIONES EN ESTA CARPETA:**
-> * **Versión Oficial Vigente:** [`log_cambios_2026-11-14_14-41.md`](./log_cambios_2026-11-14_14-41.md) (Big DataFrame Multi-Año Unificado, EDA Temporal/Panel y Partición OOT Explícita previa al Preprocesamiento Anti-Fuga).
+> * **Versión Oficial Vigente:** [`log_cambios_2026-11-14_17-05.md`](./log_cambios_2026-11-14_17-05.md) (Sprint 7 Completo: Evaluación OOT 2025 sobre 3,199 hogares, 1,000 réplicas Cluster Bootstrap, TreeSHAP y Auditoría de Equidad).
 > * **Versión Superada:** Los archivos con sufijo `_2026-10-08_20-30.md` en esta carpeta corresponden a un borrador intermedio que **contiene erratas factuales** (ver §3). **NO deben utilizarse como fuente de la verdad.**
 
 ---
@@ -51,7 +54,10 @@ flowchart TD
 
 | Iteración | Timestamp | Estado | Calificación / Proyección | Alcance Principal y Veredicto |
 | :---: | :---: | :---: | :---: | :--- |
-| **Big DF Unificado & EDA Panel** | **[`2026-11-14_14-41`](./log_cambios_2026-11-14_14-41.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | Desacoplamiento de unión multi-año (`build_combined_dataset`, 8,219 filas con `year`), EDA temporal/panel (930 repetidos) y partición explícita `split_oot_train_test()` previa al preprocesamiento. |
+| **Sprint 7 (OOT 2025, Bootstrap & XAI)** | **[`2026-11-14_17-05`](./log_cambios_2026-11-14_17-05.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | Evaluación ciega ENAHO 2025 ($N=3{,}199$), ponderación `factor_expansion`, curvas EE-IE ($B \in [0.10, 0.40]$), 1,000 réplicas Cluster Bootstrap ($H_1$–$H_4$), TreeSHAP ($\mathbb{R}^{28}$ y bloques) y auditoría ética en `src/evaluation.py` y `pipeline_completo.ipynb`. |
+| **Sprint 6 (Parte 2: Concurrencia)** | [`2026-11-14_16-32`](./log_cambios_2026-11-14_16-32.md) | Superada | 20.0 / 20 (Proy.) | Paralelismo multiproceso (`joblib.Parallel` `loky`), control de hilos internos (`n_jobs=1`) y caché anti-fuga de 4 vistas por pliegue en `src/models.py` (931 fits en **95.97 s**). |
+| **Sprint 6 (Parte 1: 16 Modelos & Boxplots)** | [`2026-11-14_15-58`](./log_cambios_2026-11-14_15-58.md) | Superada | 20.0 / 20 (Proy.) | Comparativa de escaladores (`Robust` vs `Standard` vs `MinMax`), 16 modelos en 8 familias (`78` configs), 30 corridas espaciales (Friedman/Wilcoxon) y Boxplots en `src/models.py`. |
+| **Big DF Unificado & EDA Panel** | [`2026-11-14_14-41`](./log_cambios_2026-11-14_14-41.md) | Superada | 20.0 / 20 (Proy.) | Desacoplamiento de unión multi-año (`build_combined_dataset`, 8,219 filas con `year`), EDA temporal/panel (930 repetidos) y partición explícita `split_oot_train_test()` previa al preprocesamiento. |
 | **Data Cleaning (15 Nulos)** | [`2026-11-11_22-45`](./log_cambios_2026-11-11_22-45.md) | Superada | 20.0 / 20 (Proy.) | **Protocolo Integral de Limpieza:** Justificación de la política de cero filas eliminadas (*Zero Drop-Row Policy*); taxonomía de los 15 nulos en 2024 y 2025; pipeline de imputación de dos fases y validación de 0% nulos. |
 | **Sprint 5 (Preproc. $\mathbb{R}^{28}$ & OBS-P01)** | [`2026-11-11_11-45`](./log_cambios_2026-11-11_11-45.md) | Superada | 20.0 / 20 (Proy.) | **Sprint 5 completado:** `SecondaryHouseholdImputer` con mediana de conglomerado y fallback global de train; One-Hot agrupando $<1\%$; 0% NaNs en CV y Test 2025; pipeline verificado (PR-AUC 0.5542 en OOT 2025). |
 | **Sprint 3 y 4 (Ingesta & Agregaciones)** | [`2026-11-11_10-55`](./log_cambios_2026-11-11_10-55.md) | Superada | 20.0 / 20 (Proy.) | Sincronización de README/IMPLEMENTATION raíz; resolución de RC-02, RC-06/RC-07, RC-08, RC-09 y loader canónico `load_canonical_train_test()`. |

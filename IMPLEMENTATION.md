@@ -38,8 +38,8 @@ flowchart LR
 | **4** | Refinamiento de Agregaciones y EDA Temporal/Panel | **COMPLETADO** | `src/dataset.py`, `src/io_enaho.py`, `notebooks/pipeline_completo.ipynb` | Resolución de RC-02 a RC-09, análisis temporal 2024 vs. 2025 y detección de los 930 hogares panel repetidos sobre el Big DF unificado antes de particionar. |
 | **5** | Partición OOT, Preprocesamiento Anti-Fuga y $\mathbb{R}^{28}$ | **COMPLETADO** | `src/dataset.py`, `src/preprocessing.py` | Partición explícita `split_oot_train_test()` (purga de 930 panel $\to$ Test $N=3{,}199$) y Pipeline Scikit-Learn sobre Train 2024 ($N=4{,}090$, 0% NaNs). |
 | **6** | Modelado Supervisado Extendido y Validación Espacial | **COMPLETADO** | `src/models.py`, `src/preprocessing.py` | 16 modelos en 8 familias (5 núcleo + extendidos) bajo `GroupKFold(5)` por conglomerado, comparativa de escaladores (`Robust` vs `Standard` vs `MinMax`) y pesos de costo $\alpha \in \{1, 2, \gamma\}$. |
-| **7** | Evaluación Fuera de Tiempo, Inferencia y XAI | **SIGUIENTE PASO** | `src/evaluation.py` | Curvas EE-IE a $B=20\%$, contraste de $H_1$ a $H_4$ con 1,000 réplicas *Cluster Bootstrap*, y explicabilidad con TreeSHAP. |
-| **8** | Informe Académico Final en $\text{\LaTeX}$ ($\le 8$ páginas) | **PENDIENTE** | `Documentation/latex/main.tex`, `sections/*` | Documento final compilado con las Secciones 04 a 07 completas, sin advertencias y alineado a la rúbrica PUCP (meta: 20.0 / 20). |
+| **7** | Evaluación Fuera de Tiempo, Inferencia y XAI | **COMPLETADO** | `src/evaluation.py`, `notebooks/pipeline_completo.ipynb` | Evaluación ciega OOT 2025 ($N=3{,}199$) con pesos `factor_expansion`, curvas EE-IE ($B \in [0.10, 0.40]$), *Cluster Bootstrap* (1,000 réplicas) para $H_1$–$H_4$, TreeSHAP y auditoría de equidad por subgrupos. |
+| **8** | Informe Académico Final en $\text{\LaTeX}$ ($\le 8$ páginas) | **SIGUIENTE PASO** | `Documentation/latex/main.tex`, `sections/*` | Documento final compilado con las Secciones 04 a 07 completas, sin advertencias y alineado a la rúbrica PUCP (meta: 20.0 / 20). |
 
 ---
 
