@@ -441,34 +441,98 @@ def _map_encoded_name_to_original(enc_name: str) -> str:
     return raw
 
 
+def _treeshap_unwind_weights(nw: List[float], ulen: int, zi: float, oi: float) -> List[float]:
+    """Desenrolla los pesos polinomiales de la ruta al eliminar una característica previa."""
+    nlen = ulen - 1
+    unw = [0.0] * nlen
+    if oi != 0.0:
+        d = nw[nlen]
+        for j in range(nlen - 1, -1, -1):
+            w_j = d * ulen / (oi * (j + 1))
+            unw[j] = w_j
+            d = nw[j] - w_j * zi * (nlen - j) / ulen
+    else:
+        for j in range(nlen - 1, -1, -1):
+            unw[j] = nw[j] * ulen / (zi * (nlen - j))
+    return unw
+
+
+def _treeshap_single_signature(nodes: np.ndarray, dec: np.ndarray, node_to_int: Dict[int, int], n_features: int) -> np.ndarray:
+    """Ejecuta el algoritmo TreeSHAP (Lundberg & Lee, 2018) sobre un vector único de decisiones."""
+    phi = np.zeros(n_features, dtype=np.float64)
+    is_leaf = nodes["is_leaf"].astype(bool)
+    vals = nodes["value"]
+    cnts = nodes["count"].astype(np.float64)
+    lefts = nodes["left"]
+    rights = nodes["right"]
+    fidx = nodes["feature_idx"]
+
+    def _recurse(node: int, mf: List[int], mz: List[float], mo: List[float], mw: List[float],
+                 pz: float, po: float, pi: int) -> None:
+        ulen = len(mf)
+        nf = mf + [pi]
+        nz = mz + [pz]
+        no = mo + [po]
+        nw = mw + [1.0 if ulen == 0 else 0.0]
+        for i in range(ulen - 1, -1, -1):
+            nw[i + 1] += po * nw[i] * (i + 1) / (ulen + 1)
+            nw[i] = pz * nw[i] * (ulen - i) / (ulen + 1)
+        ulen += 1
+
+        if is_leaf[node]:
+            v = float(vals[node])
+            for i in range(1, ulen):
+                s = sum(_treeshap_unwind_weights(nw, ulen, nz[i], no[i]))
+                phi[nf[i]] += v * (no[i] - nz[i]) * s
+            return
+
+        l_ch, r_ch = int(lefts[node]), int(rights[node])
+        hot, cold = (l_ch, r_ch) if dec[node_to_int[node]] == 1 else (r_ch, l_ch)
+        f_node = int(fidx[node])
+        c_node = cnts[node]
+        iz, io = 1.0, 1.0
+        if f_node in nf[1:]:
+            k_prev = nf.index(f_node, 1)
+            iz, io = nz[k_prev], no[k_prev]
+            nw2 = _treeshap_unwind_weights(nw, ulen, iz, io)
+            nf2 = nf[:k_prev] + nf[k_prev + 1:]
+            nz2 = nz[:k_prev] + nz[k_prev + 1:]
+            no2 = no[:k_prev] + no[k_prev + 1:]
+        else:
+            nf2, nz2, no2, nw2 = nf, nz, no, nw
+        _recurse(hot, nf2, nz2, no2, nw2, iz * cnts[hot] / c_node, io, f_node)
+        _recurse(cold, nf2, nz2, no2, nw2, iz * cnts[cold] / c_node, 0.0, f_node)
+
+    _recurse(0, [-1], [1.0], [1.0], [1.0], 1.0, 1.0, -1)
+    return phi
+
+
 def _histgb_tree_contribs(model: Any, X_mat: np.ndarray) -> np.ndarray:
     """
-    Calcula contribuciones aditivas exactas raíz-hoja (equivalente Saabas / TreePath)
-    en espacio log-odds para HistGradientBoostingClassifier cuando no está instalado `shap`.
+    Calcula valores TreeSHAP exactos (Lundberg & Lee, 2018, algoritmo tree_path_dependent)
+    en espacio log-odds para HistGradientBoostingClassifier sin requerir `shap`.
     """
-    n_samples, n_features = X_mat.shape
+    X_arr = np.asarray(X_mat, dtype=np.float64)
+    n_samples, n_features = X_arr.shape
     contribs = np.zeros((n_samples, n_features), dtype=np.float64)
 
     for tree_group in model._predictors:
         nodes = tree_group[0].nodes
         if len(nodes) <= 1:
             continue
-        cur = np.zeros(n_samples, dtype=np.int64)
-        while True:
-            is_leaf = nodes["is_leaf"][cur].astype(bool)
-            active = np.where(~is_leaf)[0]
-            if len(active) == 0:
-                break
-            act_nodes = cur[active]
-            f_idx = nodes["feature_idx"][act_nodes]
-            thr = nodes["num_threshold"][act_nodes]
-            miss_left = nodes["missing_go_to_left"][act_nodes].astype(bool)
-            x_vals = X_mat[active, f_idx]
-            go_left = np.where(np.isnan(x_vals), miss_left, x_vals <= thr)
-            nxt = np.where(go_left, nodes["left"][act_nodes], nodes["right"][act_nodes])
-            delta = nodes["value"][nxt] - nodes["value"][act_nodes]
-            np.add.at(contribs, (active, f_idx), delta)
-            cur[active] = nxt
+        is_leaf = nodes["is_leaf"].astype(bool)
+        internal_ids = np.where(~is_leaf)[0]
+        f_int = nodes["feature_idx"][internal_ids]
+        thr_int = nodes["num_threshold"][internal_ids]
+        ml_int = nodes["missing_go_to_left"][internal_ids].astype(bool)
+        xv = X_arr[:, f_int]
+        go_left = np.where(np.isnan(xv), ml_int[None, :], xv <= thr_int[None, :]).astype(np.uint8)
+        uniq_rows, inv = np.unique(go_left, axis=0, return_inverse=True)
+        node_to_int = {int(nid): k for k, nid in enumerate(internal_ids)}
+        uniq_phi = np.vstack([
+            _treeshap_single_signature(nodes, dec, node_to_int, n_features) for dec in uniq_rows
+        ])
+        contribs += uniq_phi[inv]
 
     return contribs
 
@@ -477,13 +541,13 @@ def _compute_shap_without_library(model: Any, X_mat: np.ndarray) -> Tuple[np.nda
     """
     Respaldo sin dependencia externa `shap`:
     - Si es LightGBM (`booster_`), usa TreeSHAP nativo en C++ (`pred_contrib=True`).
-    - Si es HistGradientBoostingClassifier (`_predictors`), usa descomposición exacta por árbol.
+    - Si es HistGradientBoostingClassifier (`_predictors`), usa TreeSHAP exacto en NumPy/Python.
     """
     if hasattr(model, "booster_"):
         raw = np.asarray(model.booster_.predict(X_mat, pred_contrib=True))
         return raw[:, :-1], "TreeSHAP nativo de LightGBM (pred_contrib=True)"
     if hasattr(model, "_predictors"):
-        return _histgb_tree_contribs(model, X_mat), "Descomposición exacta por camino de árbol (HistGBDT)"
+        return _histgb_tree_contribs(model, X_mat), "TreeSHAP exacto sin librería externa (HistGBDT)"
     raise ImportError(
         "Se requiere el paquete 'shap' (o LightGBM / HistGBDT) para explicar este tipo de estimador."
     )

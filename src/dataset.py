@@ -7,7 +7,7 @@ NOTA: Delimitado estrictamente a la integración de datos. Cero imputación de n
 """
 import sys
 from pathlib import Path
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Union, Tuple, List, Sequence
 import pandas as pd
 import numpy as np
 
@@ -154,41 +154,59 @@ def build_combined_dataset(
     return pd.concat(frames, ignore_index=True)
 
 
+def _normalize_years(years: Union[int, Sequence[int]]) -> List[int]:
+    """Normaliza un año único o una secuencia de años a List[int]."""
+    if isinstance(years, (int, np.integer)):
+        return [int(years)]
+    return [int(y) for y in years]
+
+
 def split_oot_train_test(
     df_all: pd.DataFrame,
-    train_year: int = 2024,
-    test_year: int = 2025,
+    train_year: Union[int, Sequence[int]] = 2024,
+    test_year: Union[int, Sequence[int]] = 2025,
     purge_panel: bool = True,
     verbose: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Separa el Big DataFrame unificado en Train (train_year) y Test OOT (test_year),
-    purgando en test_year los hogares panel repetidos que ya aparecen en train_year.
+    Separa el Big DataFrame unificado en Train (uno o más años) y Test OOT (uno o más años),
+    purgando en Test los hogares panel repetidos que ya aparecen en Train.
     """
-    df_train = df_all[df_all["year"] == train_year].reset_index(drop=True).copy()
-    df_test = df_all[df_all["year"] == test_year].reset_index(drop=True).copy()
+    train_years = _normalize_years(train_year)
+    test_years = _normalize_years(test_year)
+
+    df_train = df_all[df_all["year"].isin(train_years)].reset_index(drop=True).copy()
+    df_test = df_all[df_all["year"].isin(test_years)].reset_index(drop=True).copy()
 
     if purge_panel:
-        panel_keys = df_train[KEY_HOGAR].merge(df_test[KEY_HOGAR], on=KEY_HOGAR)
+        panel_keys = (
+            df_train[KEY_HOGAR].drop_duplicates()
+            .merge(df_test[KEY_HOGAR].drop_duplicates(), on=KEY_HOGAR)
+        )
         n_panel = len(panel_keys)
         df_test = df_test.merge(panel_keys.assign(_panel=1), on=KEY_HOGAR, how="left")
         df_test = df_test[df_test["_panel"].isna()].drop(columns=["_panel"]).reset_index(drop=True)
         if verbose:
-            print(f"[split_oot_train_test] Purga de panel ({train_year}->{test_year}): {n_panel:,d} hogares repetidos eliminados de {test_year}.")
+            print(f"[split_oot_train_test] Purga de panel ({train_years}->{test_years}): {n_panel:,d} hogares repetidos eliminados de {test_years}.")
 
     return df_train, df_test
 
 
 def load_train_test_master(
-    data_root: Union[str, Path] = "Data"
+    data_root: Union[str, Path] = "Data",
+    train_years: Union[int, Sequence[int]] = 2024,
+    test_years: Union[int, Sequence[int]] = 2025,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Construye el Big DataFrame multi-año (2024+2025) y retorna (df_2024_train, df_2025_test) purgado."""
-    df_all = build_combined_dataset(years=(2024, 2025), data_root=data_root)
-    return split_oot_train_test(df_all, train_year=2024, test_year=2025, purge_panel=True)
+    """Construye el Big DataFrame multi-año y retorna (df_train, df_test) con panel purgado."""
+    all_years = tuple(dict.fromkeys([*_normalize_years(train_years), *_normalize_years(test_years)]))
+    df_all = build_combined_dataset(years=all_years, data_root=data_root)
+    return split_oot_train_test(df_all, train_year=train_years, test_year=test_years, purge_panel=True)
 
 
 def load_canonical_train_test(
-    data_root: Union[str, Path] = "Data"
+    data_root: Union[str, Path] = "Data",
+    train_years: Union[int, Sequence[int]] = 2024,
+    test_years: Union[int, Sequence[int]] = 2025,
 ) -> Tuple[pd.DataFrame, pd.Series, pd.Series, pd.DataFrame, pd.Series, pd.Series]:
     """
     Carga y retorna los conjuntos canónicos libres de data leakage:
@@ -197,7 +215,11 @@ def load_canonical_train_test(
     """
     from src.preprocessing import CANONICAL_FEATURES_28, TARGET_COL, GROUP_COL
 
-    df_train, df_test = load_train_test_master(data_root=data_root)
+    df_train, df_test = load_train_test_master(
+        data_root=data_root,
+        train_years=train_years,
+        test_years=test_years,
+    )
 
     X_train = df_train[CANONICAL_FEATURES_28].copy()
     y_train = df_train[TARGET_COL].copy()

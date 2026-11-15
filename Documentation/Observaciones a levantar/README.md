@@ -36,16 +36,18 @@ flowchart TD
         I19["Iteración 2026-11-14_14-41 [SUPERADA]\n(log_cambios_2026-11-14_14-41.md — Big DF Multi-Año Unificado, EDA Temporal/Panel y Partición OOT Explícita)"]
         I20["Iteración 2026-11-14_15-58 [SUPERADA]\n(log_cambios_2026-11-14_15-58.md — Sprint 6 Parte 1: 16 Modelos, Escaladores, 30 Corridas y Boxplots)"]
         I21["Iteración 2026-11-14_16-32 [SUPERADA]\n(log_cambios_2026-11-14_16-32.md — Sprint 6 Parte 2: Concurrencia Multiproceso y Caché Anti-Fuga por Pliegue)"]
-        I22["Iteración 2026-11-14_17-05 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-14_17-05.md — Sprint 7: Evaluación Ciega OOT 2025, Cluster Bootstrap H1-H4, TreeSHAP y Equidad)"]
+        I22["Iteración 2026-11-14_17-05 [SUPERADA]\n(log_cambios_2026-11-14_17-05.md — Sprint 7: Evaluación Ciega OOT 2025, Cluster Bootstrap H1-H4, TreeSHAP y Equidad)"]
+        I23["Iteración 2026-11-15_16-55 [SUPERADA]\n(log_cambios_2026-11-15_16-55.md — Multi-Año en dataset.py, Respaldo TreeSHAP Python 3.14 y Notebook Limpio)"]
+        I24["Iteración 2026-11-15_17-38 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-15_17-38.md — Consolidación 2024+2025 Anti-Overfitting, winner_bundle.joblib, TreeSHAP Exacto y Encuesta en src/)"]
     end
 
     R -->|Gobierna| Historial
-    I22 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
+    I24 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
 ```
 
 > [!CAUTION]
 > **ESTADO DE LAS VERSIONES EN ESTA CARPETA:**
-> * **Versión Oficial Vigente:** [`log_cambios_2026-11-14_17-05.md`](./log_cambios_2026-11-14_17-05.md) (Sprint 7 Completo: Evaluación OOT 2025 sobre 3,199 hogares, 1,000 réplicas Cluster Bootstrap, TreeSHAP y Auditoría de Equidad).
+> * **Versión Oficial Vigente:** [`log_cambios_2026-11-15_17-38.md`](./log_cambios_2026-11-15_17-38.md) (Consolidación 2024+2025 deduplicada sobre 7,289 hogares únicos, exportación portable `models/winner_bundle.joblib`, TreeSHAP exacto sin librería externa y encuesta CLI `src/encuesta_pobreza.py` + Sección 13).
 > * **Versión Superada:** Los archivos con sufijo `_2026-10-08_20-30.md` en esta carpeta corresponden a un borrador intermedio que **contiene erratas factuales** (ver §3). **NO deben utilizarse como fuente de la verdad.**
 
 ---
@@ -54,7 +56,9 @@ flowchart TD
 
 | Iteración | Timestamp | Estado | Calificación / Proyección | Alcance Principal y Veredicto |
 | :---: | :---: | :---: | :---: | :--- |
-| **Sprint 7 (OOT 2025, Bootstrap & XAI)** | **[`2026-11-14_17-05`](./log_cambios_2026-11-14_17-05.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | Evaluación ciega ENAHO 2025 ($N=3{,}199$), ponderación `factor_expansion`, curvas EE-IE ($B \in [0.10, 0.40]$), 1,000 réplicas Cluster Bootstrap ($H_1$–$H_4$), TreeSHAP ($\mathbb{R}^{28}$ y bloques) y auditoría ética en `src/evaluation.py` y `pipeline_completo.ipynb`. |
+| **Producción 2024+2025 & Exportación** | **[`2026-11-15_17-38`](./log_cambios_2026-11-15_17-38.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | Consolidado 2024+2025 (`7,289` hogares únicos), `Stacking_Tight` (`Gap_Overfit_PR = 0.0483`), exportación `.joblib` sin `pyarrow` (`1908.4 KB`), TreeSHAP exacto en NumPy (`3.11e-15`), [`src/inference.py`](../../src/inference.py), [`src/encuesta_pobreza.py`](../../src/encuesta_pobreza.py) y Sección 13. |
+| **Multi-Año & Compatibilidad Py3.14** | [`2026-11-15_16-55`](./log_cambios_2026-11-15_16-55.md) | Superada | 20.0 / 20 (Proy.) | Listas de años en `src/dataset.py`, respaldo TreeSHAP cuando falta `shap`, corrección `TARGET_COL`, retiro de jerga de sprints en `pipeline_completo.ipynb` y regeneración de figuras OOT 2025. |
+| **Sprint 7 (OOT 2025, Bootstrap & XAI)** | [`2026-11-14_17-05`](./log_cambios_2026-11-14_17-05.md) | Superada | 20.0 / 20 (Proy.) | Evaluación ciega ENAHO 2025 ($N=3{,}199$), ponderación `factor_expansion`, curvas EE-IE ($B \in [0.10, 0.40]$), 1,000 réplicas Cluster Bootstrap ($H_1$–$H_4$), TreeSHAP ($\mathbb{R}^{28}$ y bloques) y auditoría ética en `src/evaluation.py` y `pipeline_completo.ipynb`. |
 | **Sprint 6 (Parte 2: Concurrencia)** | [`2026-11-14_16-32`](./log_cambios_2026-11-14_16-32.md) | Superada | 20.0 / 20 (Proy.) | Paralelismo multiproceso (`joblib.Parallel` `loky`), control de hilos internos (`n_jobs=1`) y caché anti-fuga de 4 vistas por pliegue en `src/models.py` (931 fits en **95.97 s**). |
 | **Sprint 6 (Parte 1: 16 Modelos & Boxplots)** | [`2026-11-14_15-58`](./log_cambios_2026-11-14_15-58.md) | Superada | 20.0 / 20 (Proy.) | Comparativa de escaladores (`Robust` vs `Standard` vs `MinMax`), 16 modelos en 8 familias (`78` configs), 30 corridas espaciales (Friedman/Wilcoxon) y Boxplots en `src/models.py`. |
 | **Big DF Unificado & EDA Panel** | [`2026-11-14_14-41`](./log_cambios_2026-11-14_14-41.md) | Superada | 20.0 / 20 (Proy.) | Desacoplamiento de unión multi-año (`build_combined_dataset`, 8,219 filas con `year`), EDA temporal/panel (930 repetidos) y partición explícita `split_oot_train_test()` previa al preprocesamiento. |
