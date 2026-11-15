@@ -25,8 +25,10 @@ src/
 ├── io_enaho.py           # Ingesta, lectura directa y normalización de los 5 módulos ENAHO
 ├── dataset.py            # Operador de reducción relacional Phi y construcción del Big DataFrame
 ├── preprocessing.py      # (Fase 3) Transformadores de Scikit-Learn (mediana por CONGLOME y categoría 'desconocido')
-├── models.py             # (Fase 4) Definición de los 5 modelos supervisados y optimización con GroupKFold(5)
-└── evaluation.py         # (Fase 5) Cluster Bootstrap (1,000 réplicas), curvas EE-IE y TreeSHAP
+├── models.py             # (Fase 4) Definición de 16 modelos en 8 familias y optimización con GroupKFold(5)
+├── evaluation.py         # (Fase 5) Evaluación OOT 2025, Cluster Bootstrap (1,000 réplicas), curvas EE-IE y TreeSHAP
+├── inference.py          # (Producción) Consolidación multi-año anti-overfitting, exportación .joblib y explicador local
+└── encuesta_pobreza.py   # (CLI) Ejecutable de encuesta socioeconómica ENAHO sobre models/winner_bundle.joblib
 ```
 
 ---
