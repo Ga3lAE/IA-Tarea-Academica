@@ -33,18 +33,18 @@ La salida es un puntaje continuo $\hat{p}_i$ (o el gasto predicho invertido en l
 };
 \node[boxgreen, below=3pt of ingesta] (preproc) {
     \textbf{\color{primarygreen}2. Ingeniería de datos y partición anti-fuga}\\
-    $\bullet$ Operador $\Phi$ (jefe y agregados); mediana por conglomerado y desconocido.\\
-    $\bullet$ Purga de 930 hogares panel; \texttt{GroupKFold} ($K=5$) por conglomerado censal.
+    $\bullet$ Operador $\Phi$ ($\mathbb{R}^{28}$); cascada espacial \texttt{CONGLOME}$\rightarrow$\texttt{UBIGEO}$\rightarrow$global.\\
+    $\bullet$ Purga de 930 hogares panel; \texttt{GroupKFold(5)} y 30 corridas repetidas.
 };
 \node[boxteal, below=3pt of preproc] (modelado) {
-    \textbf{\color{secondaryteal}3. Modelado supervisado sensible al costo}\\
-    $\bullet$ PMT-MCO $\ln(\text{gasto})$; Logística ElasticNet; CART; Random Forest; LightGBM.\\
-    $\bullet$ Optimización de hiperparámetros y peso de clase $\alpha \in \{1, 2, \gamma\}$.
+    \textbf{\color{secondaryteal}3. Benchmark de 19 modelos y selección ex-ante en 2024}\\
+    $\bullet$ PMT-MCO (OLS/Ridge), ElasticNet, CART, RF/ET, LightGBM/XGBoost/CatBoost y Stacking.\\
+    $\bullet$ Ajuste de $\alpha \in \{1, 2, \gamma\}$ y selección ganadora usando solo CV 2024.
 };
 \node[boxgray, below=3pt of modelado] (validacion) {
-    \textbf{\color{primarygreen}4. Política de decisión e inferencia estadística}\\
-    $\bullet$ Cobertura fija $B=20\%$; curvas EE--IE ($B \in [0.10, 0.40]$).\\
-    $\bullet$ Inferencia por \textit{bootstrap} de conglomerados (1,000 réplicas); TreeSHAP.
+    \textbf{\color{primarygreen}4. Política de decisión, inferencia y explicabilidad}\\
+    $\bullet$ Cobertura fija $B=20\%$; curvas EE--IE ($B \in [0.10, 0.40]$) y $\tau_{2024}$ congelado.\\
+    $\bullet$ \textit{Cluster bootstrap} (1,000 réplicas), TreeSHAP y auditoría ética en 2025.
 };
 \draw[arrow] (ingesta) -- (preproc);
 \draw[arrow] (preproc) -- (modelado);
@@ -58,7 +58,7 @@ La salida es un puntaje continuo $\hat{p}_i$ (o el gasto predicho invertido en l
 
 \textbf{Operador de reducción relacional $\Phi$.} La ENAHO posee estructura jerárquica (vivienda $\rightarrow$ hogar $\rightarrow$ individuo). Para transformar los microdatos individuales en el vector de características del hogar $\mathbf{x}_i$, se define el operador relacional $\Phi$ con dos ramas \cite{grosh2022revisiting}: (i) extracción de atributos del jefe del hogar ($P203 = 1$: edad, sexo, nivel educativo, horas semanales y afiliación a pensión); y (ii) funcionales de reducción sobre todos los miembros $j$, como la tasa de dependencia demográfica $\text{dep}_i = \sum_j \mathbb{I}(e_j<15 \lor e_j \ge 65) / \max\bigl(1, \sum_j \mathbb{I}(15 \le e_j < 65)\bigr)$, el hacinamiento (personas por habitación), el máximo nivel educativo alcanzado en el hogar y la fracción de ocupados.
 
-\textbf{Tratamiento de valores faltantes y atípicos.} Se implementa un protocolo en dos fases: (a) \textit{Imputación de hogares secundarios}: 72 hogares secundarios (1.76\% en 2024) que comparten vivienda con el hogar principal carecen de datos físicos de Módulo 01; en lugar de propagación lineal, sus variables numéricas (\texttt{total\_habitaciones}, \texttt{total\_dormitorios}) se imputan mediante la mediana del conglomerado censal (\texttt{CONGLOME}) del fold de entrenamiento, y las categóricas reciben una categoría explícita \texttt{desconocido}. (b) \textit{Imputación en pipeline}: los nulos residuales numéricos se imputan por la mediana general, las horas del jefe inactivo se fijan en cero y las categóricas reciben una categoría sentinela (-1) con codificación One-Hot que agrupa categorías raras ($<1\%$). Para evitar sesgar la muestra contra los hogares más vulnerables, \textbf{no se podan valores atípicos} en tamaño de hogar ni razón de dependencia; se preserva la distribución completa aprovechando la invarianza monotónica de los árboles y el escalamiento robusto en modelos lineales.
+\textbf{Tratamiento de valores faltantes y atípicos.} Se implementa un protocolo en dos fases: (a) \textit{Imputación espacial jerárquica en hogares secundarios}: 72 hogares secundarios en 2024 (1.76\%) y 91 en el conjunto independiente de 2025 (2.84\%) comparten vivienda con el hogar principal y carecen de registro físico en el Módulo 01 (\texttt{sin\_datos\_vivienda = 1}). Dado que en \texttt{GroupKFold} agrupado por conglomerado ningún conglomerado de validación está presente en el pliegue de entrenamiento, imputar únicamente por conglomerado caería en la mediana global durante la validación. Para preservar la señal geográfica sin fugas, el transformador \texttt{SecondaryHouseholdImputer} aprende exclusivamente en \texttt{fit}($X_{\text{train}}$) una cascada jerárquica de tres niveles sobre \texttt{total\_habitaciones} y \texttt{total\_dormitorios} (recalculando luego \texttt{personas\_por\_hab}): (1) mediana del conglomerado censal (\texttt{CONGLOME}, 704 grupos en 2024) $\rightarrow$ (2) mediana del distrito (\texttt{UBIGEO}, 47 distritos en Lima y Callao) cuando el conglomerado es nuevo en validación $\rightarrow$ (3) mediana global del pliegue. Así, en la validación cruzada de 2024 los 72 hogares secundarios reciben la mediana distrital de entrenamiento y en la prueba fuera de tiempo de 2025 los 91 hogares secundarios reciben la mediana de su conglomerado de 2024; ni \texttt{CONGLOME} ni \texttt{UBIGEO} ingresan como variables predictoras al clasificador, y las variables categóricas de vivienda sin dato reciben un código explícito (99 = \texttt{sin\_dato\_vivienda}). (b) \textit{Imputación en pipeline}: los nulos residuales numéricos se imputan por la mediana del pliegue, las horas del jefe inactivo se fijan en cero y las categóricas reciben codificación One-Hot con agrupación de categorías infrecuentes ($<1\%$). Para no sesgar la muestra contra los hogares más vulnerables, \textbf{no se podan valores atípicos} en tamaño de hogar ni razón de dependencia, aprovechando la invarianza monotónica de los árboles y el escalamiento robusto (\texttt{RobustScaler}) en modelos lineales y de distancia.
 
 \textbf{Protocolo anti-fuga y partición espacial.} Para garantizar validez externa y evitar sobreestimación del desempeño, se aplican tres salvaguardas (Figura~\ref{fig:particion}): (i) \textit{Partición fuera de tiempo (OOT)}: entrenamiento con 2024 y evaluación en 2025 \cite{aiken2023moving}. (ii) \textit{Purga de panel}: se identifican y eliminan del conjunto de prueba 2025 los 930 hogares repetidos encuestados en 2024, reduciendo la muestra de test a 3,199 hogares independientes. (iii) \textit{Validación cruzada agrupada}: dado el diseño muestral bietápico del INEI por conglomerados censales (donde 702 de 704 conglomerados se repiten entre años), la validación interna emplea \texttt{GroupKFold} de 5 particiones agrupadas por \texttt{CONGLOME}, evitando fugas por autocorrelación espacial intra-clúster. Todo preprocesamiento opera encapsulado en un \texttt{Pipeline} ajustado únicamente en el fold de entrenamiento.
 
@@ -99,15 +99,15 @@ La salida es un puntaje continuo $\hat{p}_i$ (o el gasto predicho invertido en l
 \label{fig:particion}
 \end{figure}
 
-\subsection{Modelos supervisados, política de decisión e inferencia}
+\subsection{Modelos supervisados, selección ex-ante, política de decisión e inferencia}
 
-\textbf{Conjunto de modelos.} Se comparan cinco algoritmos: (1) Línea base econométrica PMT-MCO sobre $\ln(\text{gasto}_i)$ \cite{brown2018poor,mcbride2018retooling}; (2) Regresión logística regularizada con ElasticNet ($C \in [10^{-3}, 10^2]$, $l_1\text{-ratio} \in [0, 1]$); (3) Árbol de decisión CART con poda por costo-complejidad ($\alpha_{\text{ccp}}$); (4) \textit{Random Forest} (100 a 500 árboles, \texttt{max\_depth} optimizado); y (5) LightGBM (tasa de aprendizaje $\eta \in [0.01, 0.1]$, \texttt{num\_leaves} calibrado).
+\textbf{Conjunto de modelos y regla de selección ex-ante.} Sobre los cinco algoritmos troncales del estudio se articula un benchmark sistemático de \textbf{19 modelos supervisados en 8 familias} (99 configuraciones candidatas implementadas sobre \texttt{scikit-learn} \cite{pedregosa2011scikit}): (1) \textit{Líneas base solo vivienda} ($H_1$, 11 variables M01): regresión logística ElasticNet y \textit{Random Forest} restringidos a infraestructura física; (2) \textit{Familia econométrica PMT continua}: \texttt{PMT\_MCO}, implementada mediante regresión lineal regularizada con penalización $L_2$ (\texttt{OLS/Ridge}, $\alpha_{\text{ridge}} \in \{10^{-4}, 1, 10\}$) sobre $\ln(\text{gasto}_i)$ para estabilizar la colinealidad de la matriz One-Hot \cite{brown2018poor,mcbride2018retooling}, acompañada de regresión cuantílica \texttt{PMT\_Quantile\_20} ($q=0.20$), recalibrando en ambos casos el puntaje continuo ($-\widehat{\ln\text{gasto}}_i$) a probabilidades mediante regresión logística univariada dentro de cada pliegue; (3) \textit{Familia lineal y generativa} ($\mathbb{R}^{28}$ con \texttt{RobustScaler}): \texttt{Logistica\_ElasticNet} ($C \in \{0.05, 0.2, 1.0\}$, $l_1\text{-ratio} \in \{0, 0.5, 1.0\}$), análisis discriminante lineal (\texttt{LDA}) y \texttt{Naive\_Bayes}; (4) \textit{Árbol individual}: \texttt{CART\_Podado} por costo-complejidad ($\alpha_{\text{ccp}} \in \{0.001, 0.003, 0.006\}$); (5) \textit{Ensambles bagging}: \texttt{Random\_Forest} y \texttt{Extra\_Trees} (300 árboles con regularización de profundidad y hoja); (6) \textit{Ensambles de gradient boosting}: cuatro librerías evaluadas por separado y sin sustitución silenciosa ---\texttt{LightGBM\_GBDT} \cite{ke2017lightgbm}, \texttt{XGBoost\_GBDT} \cite{chen2016xgboost}, \texttt{CatBoost\_GBDT} \cite{prokhorenkova2018catboost} e \texttt{HistGBDT\_Sklearn}--- más \texttt{AdaBoost}; (7) \textit{No lineales y redes}: \texttt{SVM\_RBF}, \texttt{KNN} ($k=35$) y perceptrón multicapa \texttt{MLP\_Red\_Neuronal} $(64, 32)$; y (8) \textit{Meta-ensamble}: \texttt{Stacking\_Ensemble} \cite{wolpert1992stacked}, que combina mediante un meta-clasificador logístico las predicciones fuera de pliegue (\texttt{cv=3}) de \texttt{Logistica\_ElasticNet}, \texttt{Random\_Forest}, \texttt{Extra\_Trees} y \texttt{LightGBM}. Para evitar toda selección pos-hoc mirando el conjunto de prueba 2025, se declara una \textbf{regla formal de selección ex-ante usando únicamente ENAHO 2024}: los 19 modelos (con sus hiperparámetros óptimos del \texttt{GroupKFold(5)} inicial) se someten a \textbf{Validación Cruzada Espacial Repetida} ($6\text{ repeticiones} \times 5\text{ pliegues} = 30\text{ corridas}$ permutando los 704 conglomerados de 2024), eligiendo al ganador por orden lexicográfico en 2024 según mayor mediana de PR-AUC (\texttt{PR\_AUC\_Mediana}), menor rango medio de Friedman (\texttt{Rank\_Medio\_PR}) y menor mediana de error de exclusión a $B=20\%$ (\texttt{EE\_B20\_Mediana}).
 
-\textbf{Política de asignación e inferencia.} Para aislar el aporte algorítmico del umbral arbitrario, los modelos se comparan a una cobertura presupuestal fija $B = 20\%$, complementada con curvas exclusión-inclusión para $B \in [0.10, 0.40]$ \cite{noriega2020algorithmic}. La inferencia sobre las brechas entre modelos (H1, H2, H4) se realiza mediante \textit{cluster bootstrap} con 1,000 réplicas a nivel de conglomerado. Finalmente, se aplica TreeSHAP sobre el mejor ensamble para descomponer aditivamente los puntajes y auditar que las variables predictivas no capturen proxies prohibidos. Un chequeo preliminar en 2024 arrojó un EE de 0.43 a 0.44 para la línea base, la logística y \textit{random forest}, con diferencias dentro de $\pm 0.035$ (H2). Las métricas se reportan por hogar y ponderadas por factor de expansión poblacional.
+\textbf{Política de asignación, inferencia y explicabilidad.} Para aislar el aporte algorítmico de la elección arbitraria de umbral, los modelos se comparan a cobertura presupuestal fija $B = 20\%$, complementada con curvas exclusión-inclusión para $B \in [0.10, 0.40]$ \cite{noriega2020algorithmic} y con la evaluación operativa en 2025 del umbral $\tau_{2024}$ congelado en la validación OOF de 2024 para alcanzar $\text{Recall} = 0.70$ ($H_3$). La inferencia estadística sobre las hipótesis $H_1$ a $H_4$ emplea \textit{cluster bootstrap} con 1,000 réplicas remuestreadas a nivel de conglomerado censal, distinguiendo explícitamente entre cumplimiento puntual y corroboración al 95\% de confianza. Finalmente, se aplica TreeSHAP exacto \cite{lundberg2020local} en espacio log-odds sobre el ensamble de árboles en 2025, sumando aditivamente las atribuciones codificadas hacia las 28 variables canónicas y los 4 bloques temáticos (integrando el hacinamiento \texttt{personas\_por\_hab} dentro del bloque de Vivienda y Hacinamiento $\text{M01}/\Phi$), además de auditar disparidades de equidad por jefatura femenina y condición de hogar secundario. Las métricas se reportan por hogar muestral y ponderadas por el factor de expansión poblacional (\texttt{FACTOR07}).
 
 \begin{table}[htbp]
 \centering
-\caption{Adaptaciones del enfoque y publicación que las sustenta.}
+\caption{Adaptaciones metodológicas del estudio y publicaciones que las sustentan.}
 \label{tab:adaptaciones}
 \fontsize{6.8}{8.2}\selectfont
 \setlength{\tabcolsep}{3pt}
@@ -115,19 +115,21 @@ La salida es un puntaje continuo $\hat{p}_i$ (o el gasto predicho invertido en l
 \toprule
 \textbf{Adaptación} & \textbf{Cómo se aplica} & \textbf{Sustento} \\
 \midrule
-Agregación del hogar ($\Phi$) & Variables de jefatura y composición del hogar & \cite{grosh2022revisiting} \\
+Agregación ($\Phi$) e imputación espacial & Jefatura, ratios y cascada \texttt{CONGLOME}/\texttt{UBIGEO}/global & \cite{grosh2022revisiting} \\
 \addlinespace[2pt]
-Línea base PMT-MCO & $\ln(\text{gasto})$ con corte en la línea & \cite{brown2018poor,mcbride2018retooling} \\
+Línea base PMT-MCO & Regresión lineal regularizada (\texttt{OLS/Ridge}) sobre $\ln(\text{gasto})$ & \cite{brown2018poor,mcbride2018retooling} \\
 \addlinespace[2pt]
-Pérdida sensible al costo & $\alpha$ como hiperparámetro; sin doble corrección del umbral & \cite{elkan2001foundations} \\
+Pérdida sensible al costo & $\alpha \in \{1, 2, \gamma\}$ como hiperparámetro; sin doble corrección & \cite{elkan2001foundations} \\
 \addlinespace[2pt]
-Igual cobertura y curva EE-IE & Selección de 20\% de hogares & \cite{noriega2020algorithmic} \\
+Igual cobertura y curva EE-IE & Selección del 20\% de hogares y frontera $B \in [0.10, 0.40]$ & \cite{noriega2020algorithmic} \\
 \addlinespace[2pt]
-Prueba fuera de tiempo sin panel & Entrenar 2024, evaluar 2025 sin 930 hogares & \cite{aiken2023moving} \\
+Prueba fuera de tiempo sin panel & Entrenar en 2024 y evaluar en 2025 purgando 930 hogares & \cite{aiken2023moving} \\
 \addlinespace[2pt]
-Validación agrupada & \texttt{GroupKFold} por conglomerado & Diseño muestral de la ENAHO \\
+Selección ex-ante en CV espacial & \texttt{GroupKFold(5)} y 30 corridas repetidas solo en 2024 & Diseño muestral ENAHO \\
 \addlinespace[2pt]
-Modelos de aprendizaje automático & \textit{Random forest} y LightGBM frente a modelos lineales & \cite{mcbride2018retooling,noriega2020algorithmic} \\
+Benchmark ML y meta-ensamble & 19 modelos (\textit{LightGBM}, \textit{XGBoost}, \textit{CatBoost}, \textit{Stacking}) & \cite{ke2017lightgbm,chen2016xgboost,prokhorenkova2018catboost,wolpert1992stacked,pedregosa2011scikit} \\
+\addlinespace[2pt]
+Explicabilidad aditiva por bloque & TreeSHAP en log-odds agregado a $\mathbb{R}^{28}$ y 4 módulos & \cite{lundberg2020local} \\
 \bottomrule
 \end{tabular}
 \end{table}
