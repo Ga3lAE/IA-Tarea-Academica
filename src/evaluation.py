@@ -176,6 +176,8 @@ def compute_ee_ie_curves(
                 "Stacking_Ensemble",
                 "Logistica_ElasticNet",
                 "LightGBM_GBDT",
+                "XGBoost_GBDT",
+                "CatBoost_GBDT",
                 "Random_Forest",
                 "PMT_MCO",
                 "CART_Podado",
@@ -293,6 +295,8 @@ def run_cluster_bootstrap_hypotheses(
         ("Logistica_ElasticNet", "Logistica_Solo_Vivienda"),
         ("Random_Forest", "RF_Solo_Vivienda"),
         ("LightGBM_GBDT", "RF_Solo_Vivienda"),
+        ("XGBoost_GBDT", "RF_Solo_Vivienda"),
+        ("CatBoost_GBDT", "RF_Solo_Vivienda"),
         ("Stacking_Ensemble", "Logistica_Solo_Vivienda"),
     ]
     for m_full, m_viv in h1_pairs:
@@ -321,6 +325,10 @@ def run_cluster_bootstrap_hypotheses(
     h2_pairs = [
         ("LightGBM_GBDT", "Logistica_ElasticNet"),
         ("LightGBM_GBDT", "PMT_MCO"),
+        ("XGBoost_GBDT", "Logistica_ElasticNet"),
+        ("XGBoost_GBDT", "PMT_MCO"),
+        ("CatBoost_GBDT", "Logistica_ElasticNet"),
+        ("CatBoost_GBDT", "PMT_MCO"),
         ("Random_Forest", "Logistica_ElasticNet"),
         ("Random_Forest", "PMT_MCO"),
         ("Stacking_Ensemble", "Logistica_ElasticNet"),
@@ -353,7 +361,16 @@ def run_cluster_bootstrap_hypotheses(
     # -------------------------------------------------------------------------
     # H3: Punto Operativo en 2025 con tau congelado de 2024 (Rec>=0.70, Prec>=0.40)
     # -------------------------------------------------------------------------
-    for m_name in ["Stacking_Ensemble", "Logistica_ElasticNet", "LightGBM_GBDT", "Random_Forest", "PMT_MCO"]:
+    core_models_h3_h4 = [
+        "Stacking_Ensemble",
+        "Logistica_ElasticNet",
+        "LightGBM_GBDT",
+        "XGBoost_GBDT",
+        "CatBoost_GBDT",
+        "Random_Forest",
+        "PMT_MCO",
+    ]
+    for m_name in core_models_h3_h4:
         if m_name in probs_2025:
             tau = float(fitted_artifacts[m_name]["metrics_cv"]["Tau_Rec70"])
             pred = (probs_2025[m_name] >= tau).astype(int)
@@ -372,8 +389,8 @@ def run_cluster_bootstrap_hypotheses(
                 "Media_Bootstrap": r_mean,
                 "IC95_Inf": r_lo,
                 "IC95_Sup": r_hi,
-                "Criterio_Meta": "Recall >= 0.70",
-                "Resultado": "CORROBORADA" if rec_obs >= 0.70 else "NO CORROBORADA",
+                "Criterio_Meta": "Recall >= 0.70 (IC95_Inf >= 0.70)",
+                "Resultado": "CORROBORADA" if r_lo >= 0.70 else ("CORROBORADA PUNTO (IC < 0.70)" if rec_obs >= 0.70 else "NO CORROBORADA"),
             })
             rows.append({
                 "Hipotesis": "H3 (Precisión >= 0.40 con tau_2024)",
@@ -382,14 +399,14 @@ def run_cluster_bootstrap_hypotheses(
                 "Media_Bootstrap": p_mean,
                 "IC95_Inf": p_lo,
                 "IC95_Sup": p_hi,
-                "Criterio_Meta": "Precisión >= 0.40",
-                "Resultado": "CORROBORADA" if prec_obs >= 0.40 else "NO CORROBORADA",
+                "Criterio_Meta": "Precisión >= 0.40 (IC95_Inf >= 0.40)",
+                "Resultado": "CORROBORADA" if p_lo >= 0.40 else ("CORROBORADA PUNTO (IC < 0.40)" if prec_obs >= 0.40 else "NO CORROBORADA"),
             })
 
     # -------------------------------------------------------------------------
     # H4: Degradación temporal PR-AUC (CV 2024 -> Test 2025) <= 0.05
     # -------------------------------------------------------------------------
-    for m_name in ["Stacking_Ensemble", "Logistica_ElasticNet", "LightGBM_GBDT", "Random_Forest", "PMT_MCO"]:
+    for m_name in core_models_h3_h4:
         if m_name in probs_2025:
             oof_24 = fitted_artifacts[m_name]["oof_probs"]
             p_25 = probs_2025[m_name]
@@ -418,18 +435,19 @@ def run_cluster_bootstrap_hypotheses(
 # =============================================================================
 
 _BLOCK_MAP: Dict[str, str] = {}
-for _c in ["total_habitaciones", "total_dormitorios", "tipo_vivienda", "material_pared",
-           "material_piso", "tenencia_vivienda", "fuente_agua", "agua_todos_los_dias",
-           "conexion_bano", "combustible_cocina", "tiene_internet"]:
-    _BLOCK_MAP[_c] = "Vivienda (M01)"
+for _c in ["total_habitaciones", "total_dormitorios", "personas_por_hab",
+           "tipo_vivienda", "material_pared", "material_piso", "tenencia_vivienda",
+           "fuente_agua", "agua_todos_los_dias", "conexion_bano",
+           "combustible_cocina", "tiene_internet"]:
+    _BLOCK_MAP[_c] = "Vivienda y Hacinamiento (M01/Φ)"
 for _c in ["n_miembros", "n_ninos_0_5", "n_menores_14", "n_mayores_65",
            "tasa_dependencia", "jefe_edad", "jefe_mujer"]:
     _BLOCK_MAP[_c] = "Demografía (M02)"
 for _c in ["educ_jefe", "educ_max_hogar"]:
     _BLOCK_MAP[_c] = "Educación (M03)"
-for _c in ["n_ocupados", "ocupados_por_miembro", "personas_por_hab", "jefe_horas_semanales",
+for _c in ["n_ocupados", "ocupados_por_miembro", "jefe_horas_semanales",
            "jefe_ocupado", "jefe_cat_ocupacional", "jefe_empresa_ruc", "jefe_sin_pension"]:
-    _BLOCK_MAP[_c] = "Empleo y Ratios (M05/Φ)"
+    _BLOCK_MAP[_c] = "Empleo y Formalidad (M05/Φ)"
 
 
 def _map_encoded_name_to_original(enc_name: str) -> str:
@@ -684,7 +702,7 @@ def compute_treeshap_analysis(
                 X_mat,
                 feature_names=clean_feat_names,
                 max_display=15,
-                title="TreePath Global (Test OOT 2025) — Top 15 Atributos Predictivos",
+                title="TreeSHAP Global (Test OOT 2025) — Top 15 Atributos Predictivos",
             )
         if save_dir is not None:
             try:

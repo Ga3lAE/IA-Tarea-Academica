@@ -40,6 +40,7 @@ from src.dataset import KEY_HOGAR, build_combined_dataset
 from src.evaluation import _histgb_tree_contribs, _map_encoded_name_to_original
 from src.models import compute_targeting_metrics
 from src.preprocessing import (
+    AUX_GROUP_COL,
     CANONICAL_FEATURES_28,
     CATEGORICAL_COLS,
     GROUP_COL,
@@ -424,7 +425,8 @@ def train_and_export_deployment_bundle(
     audita la brecha Train vs. OOF para descartar overfitting y exporta el paquete `.joblib`.
     """
     df_u = load_deduplicated_pooled_dataset(years=years, data_root=data_root, verbose=verbose)
-    X = df_u[CANONICAL_FEATURES_28 + [GROUP_COL]].copy()
+    cols_in = [c for c in CANONICAL_FEATURES_28 + [GROUP_COL, AUX_GROUP_COL] if c in df_u.columns]
+    X = df_u[cols_in].copy()
     y_arr = df_u[TARGET_COL].values.astype(int)
     grp_arr = df_u[GROUP_COL].values
 
@@ -489,6 +491,7 @@ def train_and_export_deployment_bundle(
     cutoff_b20 = float(np.quantile(oof_stack, 1.0 - budget_coverage))
     bundle: Dict[str, Any] = {
         "winner_name": "Stacking_Ensemble",
+        "selection_rule_2024": "Repeated_Spatial_CV_30runs_2024 (Opción 1B: PR_AUC_Mediana + Rank_Medio_PR sobre 704 conglomerados de ENAHO 2024)",
         "explainer_name": "HistGBDT_Regularizado",
         "train_years": list(years),
         "n_unique_households": int(len(y_arr)),
@@ -597,6 +600,7 @@ def build_household_dataframe_from_answers(answers: Dict[str, Any]) -> pd.DataFr
 
     row = {
         "conglomerado": str(answers.get("conglomerado", "__nuevo_hogar__")),
+        "ubigeo": str(answers.get("ubigeo", "__nuevo_distrito__")),
         # Numéricas (14)
         "total_habitaciones": tot_hab,
         "total_dormitorios": tot_dorm,

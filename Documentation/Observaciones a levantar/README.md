@@ -38,16 +38,17 @@ flowchart TD
         I21["Iteración 2026-11-14_16-32 [SUPERADA]\n(log_cambios_2026-11-14_16-32.md — Sprint 6 Parte 2: Concurrencia Multiproceso y Caché Anti-Fuga por Pliegue)"]
         I22["Iteración 2026-11-14_17-05 [SUPERADA]\n(log_cambios_2026-11-14_17-05.md — Sprint 7: Evaluación Ciega OOT 2025, Cluster Bootstrap H1-H4, TreeSHAP y Equidad)"]
         I23["Iteración 2026-11-15_16-55 [SUPERADA]\n(log_cambios_2026-11-15_16-55.md — Multi-Año en dataset.py, Respaldo TreeSHAP Python 3.14 y Notebook Limpio)"]
-        I24["Iteración 2026-11-15_17-38 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-15_17-38.md — Consolidación 2024+2025 Anti-Overfitting, winner_bundle.joblib, TreeSHAP Exacto y Encuesta en src/)"]
+        I24["Iteración 2026-11-15_17-38 [SUPERADA]\n(log_cambios_2026-11-15_17-38.md — Consolidación 2024+2025 Anti-Overfitting, winner_bundle.joblib, TreeSHAP Exacto y Encuesta en src/)"]
+        I25["Iteración 2026-11-15_19-18 [ACTIVA / OFICIAL]\n(log_cambios_2026-11-15_19-18.md — Sprint 1 Correcciones: Python 3.12, 19 Modelos con XGBoost/CatBoost/HistGBDT, Cascada Conglomerado->Distrito, Selección 2024 y Corrida Única)"]
     end
 
     R -->|Gobierna| Historial
-    I24 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
+    I25 -->|Implementado en| DOCS["Documentation/latex/main.tex\nDocumentation/latex/main.pdf\n(En ruta al Entregable Final)"]
 ```
 
 > [!CAUTION]
 > **ESTADO DE LAS VERSIONES EN ESTA CARPETA:**
-> * **Versión Oficial Vigente:** [`log_cambios_2026-11-15_17-38.md`](./log_cambios_2026-11-15_17-38.md) (Consolidación 2024+2025 deduplicada sobre 7,289 hogares únicos, exportación portable `models/winner_bundle.joblib`, TreeSHAP exacto sin librería externa y encuesta CLI `src/encuesta_pobreza.py` + Sección 13).
+> * **Versión Oficial Vigente:** [`log_cambios_2026-11-15_19-18.md`](./log_cambios_2026-11-15_19-18.md) (Unificación de entorno en Python 3.12 LTS, 19 modelos con `LightGBM` + `XGBoost` + `CatBoost` + `HistGBDT` separados, cascada espacial `conglomerado -> ubigeo -> global` sin fuga, regla de selección ex-ante en 30 corridas de 2024, reclasificación `personas_por_hab` y ejecución completa 25/25 del notebook con figuras regeneradas).
 > * **Versión Superada:** Los archivos con sufijo `_2026-10-08_20-30.md` en esta carpeta corresponden a un borrador intermedio que **contiene erratas factuales** (ver §3). **NO deben utilizarse como fuente de la verdad.**
 
 ---
@@ -56,7 +57,8 @@ flowchart TD
 
 | Iteración | Timestamp | Estado | Calificación / Proyección | Alcance Principal y Veredicto |
 | :---: | :---: | :---: | :---: | :--- |
-| **Producción 2024+2025 & Exportación** | **[`2026-11-15_17-38`](./log_cambios_2026-11-15_17-38.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | Consolidado 2024+2025 (`7,289` hogares únicos), `Stacking_Tight` (`Gap_Overfit_PR = 0.0483`), exportación `.joblib` sin `pyarrow` (`1908.4 KB`), TreeSHAP exacto en NumPy (`3.11e-15`), [`src/inference.py`](../../src/inference.py), [`src/encuesta_pobreza.py`](../../src/encuesta_pobreza.py) y Sección 13. |
+| **Sprint 1 Correcciones (Py3.12, 19 Modelos, Cascada & Regla 2024)** | **[`2026-11-15_19-18`](./log_cambios_2026-11-15_19-18.md)** | **ACTIVA / OFICIAL** | **20.0 / 20 (Proy.)** | Python 3.12 (`.venv` con `catboost 1.2.10`, `xgboost 3.4.1`, `lightgbm 4.7.0`, `shap 0.54.1`), 19 modelos (`102` configs), cascada `conglomerado -> ubigeo -> global` (`I1`), selección ex-ante en 30 corridas de 2024 (`1B`), `personas_por_hab` en Vivienda (`2A`), título `TreeSHAP Global` y corrida única 25/25 celdas. |
+| **Producción 2024+2025 & Exportación** | [`2026-11-15_17-38`](./log_cambios_2026-11-15_17-38.md) | Superada | 20.0 / 20 (Proy.) | Consolidado 2024+2025 (`7,289` hogares únicos), `Stacking_Tight` (`Gap_Overfit_PR = 0.0483`), exportación `.joblib` sin `pyarrow` (`1908.4 KB`), TreeSHAP exacto en NumPy (`3.11e-15`), [`src/inference.py`](../../src/inference.py), [`src/encuesta_pobreza.py`](../../src/encuesta_pobreza.py) y Sección 13. |
 | **Multi-Año & Compatibilidad Py3.14** | [`2026-11-15_16-55`](./log_cambios_2026-11-15_16-55.md) | Superada | 20.0 / 20 (Proy.) | Listas de años en `src/dataset.py`, respaldo TreeSHAP cuando falta `shap`, corrección `TARGET_COL`, retiro de jerga de sprints en `pipeline_completo.ipynb` y regeneración de figuras OOT 2025. |
 | **Sprint 7 (OOT 2025, Bootstrap & XAI)** | [`2026-11-14_17-05`](./log_cambios_2026-11-14_17-05.md) | Superada | 20.0 / 20 (Proy.) | Evaluación ciega ENAHO 2025 ($N=3{,}199$), ponderación `factor_expansion`, curvas EE-IE ($B \in [0.10, 0.40]$), 1,000 réplicas Cluster Bootstrap ($H_1$–$H_4$), TreeSHAP ($\mathbb{R}^{28}$ y bloques) y auditoría ética en `src/evaluation.py` y `pipeline_completo.ipynb`. |
 | **Sprint 6 (Parte 2: Concurrencia)** | [`2026-11-14_16-32`](./log_cambios_2026-11-14_16-32.md) | Superada | 20.0 / 20 (Proy.) | Paralelismo multiproceso (`joblib.Parallel` `loky`), control de hilos internos (`n_jobs=1`) y caché anti-fuga de 4 vistas por pliegue en `src/models.py` (931 fits en **95.97 s**). |

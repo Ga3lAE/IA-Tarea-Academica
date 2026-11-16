@@ -63,19 +63,23 @@ flowchart LR
   - `NUMERIC_COLS`: Razón de dependencia, hacinamiento (personas por cuarto), horas trabajadas, total de habitaciones y edad del jefe.
   - `CATEGORICAL_COLS`: Materiales constructivos (pared, piso), tenencia jurídica, saneamiento, formalidad laboral y pensión.
 - **Tratamiento Metodológico Riguroso de Nulos:**
-  - **Hogares secundarios ($n = 72$ en 2024; $n = 96$ en 2025):** En lugar de asumir erróneamente idénticas condiciones al hogar principal (`ffill/bfill`), las características físicas cualitativas se asignan a la categoría explícita `"desconocido"`, mientras que los conteos de habitaciones se imputan con la **mediana del conglomerado censal (`conglomerado`)** calculada estrictamente en el fold de entrenamiento.
+  - **Hogares secundarios ($n = 72$ en 2024; $n = 91$ en test 2025 purgado):** En lugar de asumir erróneamente idénticas condiciones al hogar principal (`ffill/bfill`), las características físicas cualitativas se asignan a la categoría explícita `"desconocido"`, mientras que los conteos de habitaciones y dormitorios se imputan mediante una **cascada espacial jerárquica sin fuga (`conglomerado` $\rightarrow$ distrito `ubigeo` $\rightarrow$ mediana global de train)** calculada estrictamente sobre el pliegue de entrenamiento (`X_train`). Ni `conglomerado` ni `ubigeo` ingresan como variables predictoras al modelo.
 - **Análisis Exploratorio:** Detección de colinealidad (VIF / matriz de correlación), distribución de variables numéricas y agrupación semántica de categorías raras ($< 1\%$).
 
 ---
 
 ### Etapa 4: Modelado Supervisado y Validación Cruzada Espacial
-- **Validación Interna Libre de Fuga Espacial:** Debido al diseño muestral bietápico del INEI (donde los conglomerados censales agrupan viviendas contiguas), se emplea `GroupKFold(n_splits=5)` agrupado por `conglomerado` en la muestra 2024. Los vecinos de un mismo clúster nunca comparten train y validación simultáneamente.
-- **Suite de Modelos Comparados:**
-  1. **Línea Base Econométrica (PMT-MCO):** Regresión lineal tradicional sobre el logaritmo del gasto per cápita ($\ln(\text{gasto})$) clasificada según corte en la canasta básica.
-  2. **Regresión Logística Regularizada:** Penalización ElasticNet ($L_1/L_2$) con escalamiento robusto.
-  3. **Árbol de Decisión CART:** Clasificador interpretable con poda por costo-complejidad ($\alpha_{\text{ccp}}$).
-  4. **Random Forest:** Ensamble de árboles balanceados por subsampleo.
-  5. **LightGBM:** Gradient Boosting optimizado para variables tabulares.
+- **Validación Interna Libre de Fuga Espacial:** Debido al diseño muestral bietápico del INEI (donde los conglomerados censales agrupan viviendas contiguas), se emplea `GroupKFold(n_splits=5)` agrupado por `conglomerado` en la muestra 2024, complementado con **Validación Cruzada Espacial Repetida ($6 \times 5 = 30$ corridas)** permutando los 704 conglomerados censales. Los vecinos de un mismo clúster nunca comparten train y validación simultáneamente.
+- **Regla Formal de Selección Ex-Ante en 2024:** El modelo ganador se selecciona exclusivamente con la evidencia de las 30 corridas de validación espacial en ENAHO 2024 (`PR_AUC_Mediana` + `Rank_Medio_PR` + `EE_B20_Mediana`), antes de evaluar el conjunto de prueba 2025.
+- **Suite de 19 Modelos Comparados en 8 Familias:**
+  1. **Baselines de Solo Vivienda ($H_1$):** `Logistica_Solo_Vivienda`, `RF_Solo_Vivienda`.
+  2. **Líneas Base Econométricas Continuas:** `PMT_MCO` (regresión lineal regularizada `OLS/Ridge` sobre $\ln(\text{gasto})$) y `PMT_Quantile_20` (`QuantileRegressor`, $q=0.20$).
+  3. **Modelos Lineales y Generativos:** `Logistica_ElasticNet` ($L_1/L_2$ con escalamiento robusto), `LDA`, `Naive_Bayes`.
+  4. **Árbol de Decisión Individual:** `CART_Podado` con poda por costo-complejidad ($\alpha_{\text{ccp}}$).
+  5. **Ensambles Bagging:** `Random_Forest` y `Extra_Trees`.
+  6. **Ensambles Gradient Boosting (separados explícitamente):** `LightGBM_GBDT`, `XGBoost_GBDT`, `CatBoost_GBDT`, `HistGBDT_Sklearn` y `AdaBoost`.
+  7. **Modelos No Lineales (Kernel, Vecindad y Redes):** `SVM_RBF`, `KNN` y `MLP_Red_Neuronal`.
+  8. **Meta-Ensamble:** `Stacking_Ensemble`.
 - **Optimización de Costo Asimétrico:** Calibración del peso de penalización $\alpha \in \{1, 2, \gamma\}$ para proteger a la clase minoritaria vulnerable y minimizar los Falsos Negativos (costo social de exclusión).
 
 ---

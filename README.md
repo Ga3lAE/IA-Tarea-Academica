@@ -58,14 +58,14 @@ En Lima Metropolitana la pobreza afecta al 18.92% de los hogares en 2024 (razón
 ### B. Tratamiento Riguroso de Nulos en Hogares Secundarios (Levantamiento OBS-P01)
 - En el Módulo 01, **72 hogares secundarios en 2024 y 96 en 2025** (`hogar >= '22'`) que cohabitan en un mismo lote o inmueble con el hogar principal carecen de registro en 5 atributos físicos de la vivienda (`tipo_vivienda`, `material_pared`, `material_piso`, `total_habitaciones`, `total_dormitorios`).
 - En atención a la retroalimentación del jurado (**OBS-P01**), **se descarta cualquier propagación intra-vivienda (`ffill/bfill`)**. Las condiciones de habitabilidad de hogares secundarios pueden diferir sustancialmente de las del principal.
-- **Solución implementada:** Las variables cualitativas de vivienda se imputan mediante la categoría explícita `"desconocido"`, mientras que los conteos de habitaciones y dormitorios se imputan mediante la **mediana del conglomerado censal (`conglomerado`)** calculada estrictamente en el pliegue de entrenamiento (con respaldo en la mediana global de train).
+- **Solución implementada:** Las variables cualitativas de vivienda se imputan mediante la categoría explícita `"desconocido"`, mientras que los conteos de habitaciones y dormitorios se imputan mediante una **cascada espacial jerárquica sin fuga (`conglomerado` $\rightarrow$ distrito `ubigeo` $\rightarrow$ mediana global de train)** calculada estrictamente sobre el pliegue de entrenamiento (`X_train`). Ni `conglomerado` ni `ubigeo` ingresan como variables predictoras al modelo.
 
 ### C. Espacio de Características Canónico ($\mathbf{x}_i \in \mathbb{R}^{28}$)
-Se descartan variables con nula varianza en Lima Metropolitana (ej. alumbrado eléctrico con >98% de cobertura y Necesidades Básicas Insatisfechas oficiales NBI1-NBI5 con >96% ceros) y se estructura un vector denso de **28 predictores**:
-* **11 de Vivienda:** Tipo, paredes, pisos, tenencia, agua, saneamiento, combustible, internet, habitaciones y dormitorios.
-* **7 de Demografía:** Tamaño del hogar, menores de 5, menores de 14, adultos mayores de 65, tasa de dependencia, edad y sexo del jefe.
-* **2 de Educación:** Nivel educativo máximo del jefe y máximo acumulado en el hogar.
-* **8 de Empleo y Ratios:** Ocupados totales, ocupados por miembro, hacinamiento (personas por cuarto), condición laboral, categoría ocupacional, horas trabajadas, formalidad (RUC) y cobertura previsional del jefe.
+Se descartan variables con nula varianza en Lima Metropolitana (ej. alumbrado eléctrico con >98% de cobertura y Necesidades Básicas Insatisfechas oficiales NBI1-NBI5 con >96% ceros) y se estructura un vector denso de **28 predictores** en 4 bloques temáticos:
+* **12 de Vivienda y Hacinamiento (`M01/Φ`):** Tipo, paredes, pisos, tenencia, agua, continuidad de agua, saneamiento, combustible, internet, habitaciones, dormitorios y hacinamiento (`personas_por_hab`).
+* **7 de Demografía (`M02`):** Tamaño del hogar, menores de 5, menores de 14, adultos mayores de 65, tasa de dependencia, edad y sexo del jefe.
+* **2 de Educación (`M03`):** Nivel educativo máximo del jefe y máximo acumulado en el hogar.
+* **7 de Empleo y Formalidad (`M05/Φ`):** Ocupados totales, ocupados por miembro (`ocupados_por_miembro`), condición laboral, categoría ocupacional, horas trabajadas, formalidad (RUC) y cobertura previsional del jefe.
 
 ---
 
@@ -80,8 +80,10 @@ src/
 ├── io_enaho.py           # Ingesta, autodetección de delimitadores y estandarización INEI
 ├── dataset.py            # Operador Phi (persona -> hogar), Big DataFrame y purga de panel
 ├── preprocessing.py      # Espacio canónico R^28 y transformadores anti-fuga (Scikit-Learn)
-├── models.py             # Definición y ajuste de los 5 clasificadores bajo GroupKFold(5)
-└── evaluation.py         # Curvas EE-IE, Cluster Bootstrap (1,000 réplicas) y TreeSHAP
+├── models.py             # Benchmark de 19 modelos (8 familias + LightGBM/XGBoost/CatBoost/HistGBDT) bajo GroupKFold(5) y 30 corridas
+├── evaluation.py         # Evaluación OOT 2025, curvas EE-IE, Cluster Bootstrap (1,000 réplicas), TreeSHAP y equidad
+├── inference.py          # Entrenamiento consolidado anti-overfitting (2024+2025 deduplicado) y exportación .joblib
+└── encuesta_pobreza.py   # Ejecutable CLI de encuesta socioeconómica con explicabilidad local
 ```
 
 ---
