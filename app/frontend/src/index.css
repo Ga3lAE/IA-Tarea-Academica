@@ -1,0 +1,94 @@
+@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/jetbrains-mono";
+@import "tailwindcss";
+
+/* Paleta "Chai Latte Editorial" */
+@theme {
+  --color-canvas: #f7f1e8;
+  --color-surface: #fffdf9;
+  --color-subtle: #efe6d8;
+  --color-rim: #e2d4c0;
+  --color-espresso: #2c1e16;
+  --color-cinnamon: #6b5444;
+  --color-chai: #9e5329;
+  --color-chai-dark: #82411d;
+  --color-latte: #f5e7d6;
+  --color-honey: #c68b3c;
+  --color-sage: #3d6b4f;
+  --color-sage-tint: #e8f0ea;
+  --color-brick: #a63a32;
+  --color-brick-tint: #fcece9;
+
+  --font-display: "Fraunces Variable", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  --shadow-card: 0 1px 0 rgb(44 30 22 / 0.04), 0 18px 40px -22px rgb(44 30 22 / 0.28);
+  --shadow-lift: 0 10px 24px -14px rgb(158 83 41 / 0.45);
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-canvas text-espresso font-sans antialiased;
+    background-image:
+      radial-gradient(1200px 600px at 100% -10%, rgb(198 139 60 / 0.12), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgb(158 83 41 / 0.08), transparent 60%);
+    background-attachment: fixed;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-chai);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-latte);
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-chai px-6 py-3 font-semibold text-surface shadow-lift transition hover:bg-chai-dark active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-rim bg-surface px-5 py-3 font-semibold text-espresso transition hover:border-chai/50 hover:bg-latte/50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-chai transition hover:bg-latte;
+  }
+  .card {
+    @apply rounded-3xl border border-rim bg-surface shadow-card;
+  }
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.16em] text-honey;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: rise 0.28s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
+  }
+}

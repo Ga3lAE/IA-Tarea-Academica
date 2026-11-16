@@ -1,0 +1,5 @@
+# Etapa 1 (solo validación). En la Etapa 2 se añadirán, con versiones exactas del artefacto:
+# scikit-learn==1.9.1, numpy, pandas y joblib==1.6.0 (el .joblib no requiere lightgbm, xgboost ni shap).
+fastapi==0.121.2
+uvicorn[standard]==0.38.0
+pydantic==2.12.4

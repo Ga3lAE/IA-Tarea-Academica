@@ -1,0 +1,327 @@
+{
+  "version": "1.0.0",
+  "description": "Catálogo único de la encuesta web. Cada clave de 'fields' coincide con una entrada cruda del modelo (src/inference.py: build_household_dataframe_from_answers). Los códigos 'value' son los de la ENAHO (INEI); las etiquetas son las que ve el ciudadano.",
+  "fields": {
+    "es_hogar_secundario": {
+      "type": "boolean",
+      "label": "¿Tu hogar comparte la vivienda con otro hogar principal?",
+      "help": "Por ejemplo, si tu familia ocupa un cuarto o un piso dentro de la casa de otra familia y cada hogar maneja sus propios gastos de comida.",
+      "options": [
+        { "value": false, "label": "No, somos el hogar principal", "hint": "Vivimos solos en la vivienda o somos quienes la ocupan principalmente." },
+        { "value": true, "label": "Sí, vivimos en la vivienda de otro hogar", "hint": "Compartimos la casa, el lote o el edificio con el hogar principal." }
+      ]
+    },
+    "ubigeo": {
+      "type": "select",
+      "label": "¿En qué distrito está la vivienda?",
+      "help": "Solo pedimos el distrito, nunca la dirección.",
+      "options": [
+        { "value": "150101", "label": "Lima (Cercado)", "group": "Lima Metropolitana" },
+        { "value": "150102", "label": "Ancón", "group": "Lima Metropolitana" },
+        { "value": "150103", "label": "Ate", "group": "Lima Metropolitana" },
+        { "value": "150104", "label": "Barranco", "group": "Lima Metropolitana" },
+        { "value": "150105", "label": "Breña", "group": "Lima Metropolitana" },
+        { "value": "150106", "label": "Carabayllo", "group": "Lima Metropolitana" },
+        { "value": "150107", "label": "Chaclacayo", "group": "Lima Metropolitana" },
+        { "value": "150108", "label": "Chorrillos", "group": "Lima Metropolitana" },
+        { "value": "150109", "label": "Cieneguilla", "group": "Lima Metropolitana" },
+        { "value": "150110", "label": "Comas", "group": "Lima Metropolitana" },
+        { "value": "150111", "label": "El Agustino", "group": "Lima Metropolitana" },
+        { "value": "150112", "label": "Independencia", "group": "Lima Metropolitana" },
+        { "value": "150113", "label": "Jesús María", "group": "Lima Metropolitana" },
+        { "value": "150114", "label": "La Molina", "group": "Lima Metropolitana" },
+        { "value": "150115", "label": "La Victoria", "group": "Lima Metropolitana" },
+        { "value": "150116", "label": "Lince", "group": "Lima Metropolitana" },
+        { "value": "150117", "label": "Los Olivos", "group": "Lima Metropolitana" },
+        { "value": "150118", "label": "Lurigancho (Chosica)", "group": "Lima Metropolitana" },
+        { "value": "150119", "label": "Lurín", "group": "Lima Metropolitana" },
+        { "value": "150120", "label": "Magdalena del Mar", "group": "Lima Metropolitana" },
+        { "value": "150122", "label": "Miraflores", "group": "Lima Metropolitana" },
+        { "value": "150123", "label": "Pachacámac", "group": "Lima Metropolitana" },
+        { "value": "150124", "label": "Pucusana", "group": "Lima Metropolitana" },
+        { "value": "150121", "label": "Pueblo Libre", "group": "Lima Metropolitana" },
+        { "value": "150125", "label": "Puente Piedra", "group": "Lima Metropolitana" },
+        { "value": "150126", "label": "Punta Hermosa", "group": "Lima Metropolitana" },
+        { "value": "150127", "label": "Punta Negra", "group": "Lima Metropolitana" },
+        { "value": "150128", "label": "Rímac", "group": "Lima Metropolitana" },
+        { "value": "150129", "label": "San Bartolo", "group": "Lima Metropolitana" },
+        { "value": "150130", "label": "San Borja", "group": "Lima Metropolitana" },
+        { "value": "150131", "label": "San Isidro", "group": "Lima Metropolitana" },
+        { "value": "150132", "label": "San Juan de Lurigancho", "group": "Lima Metropolitana" },
+        { "value": "150133", "label": "San Juan de Miraflores", "group": "Lima Metropolitana" },
+        { "value": "150134", "label": "San Luis", "group": "Lima Metropolitana" },
+        { "value": "150135", "label": "San Martín de Porres", "group": "Lima Metropolitana" },
+        { "value": "150136", "label": "San Miguel", "group": "Lima Metropolitana" },
+        { "value": "150137", "label": "Santa Anita", "group": "Lima Metropolitana" },
+        { "value": "150138", "label": "Santa María del Mar", "group": "Lima Metropolitana" },
+        { "value": "150139", "label": "Santa Rosa", "group": "Lima Metropolitana" },
+        { "value": "150140", "label": "Santiago de Surco", "group": "Lima Metropolitana" },
+        { "value": "150141", "label": "Surquillo", "group": "Lima Metropolitana" },
+        { "value": "150142", "label": "Villa El Salvador", "group": "Lima Metropolitana" },
+        { "value": "150143", "label": "Villa María del Triunfo", "group": "Lima Metropolitana" },
+        { "value": "070102", "label": "Bellavista", "group": "Callao" },
+        { "value": "070101", "label": "Callao (Cercado)", "group": "Callao" },
+        { "value": "070103", "label": "Carmen de la Legua Reynoso", "group": "Callao" },
+        { "value": "070104", "label": "La Perla", "group": "Callao" },
+        { "value": "070105", "label": "La Punta", "group": "Callao" },
+        { "value": "070107", "label": "Mi Perú", "group": "Callao" },
+        { "value": "070106", "label": "Ventanilla", "group": "Callao" },
+        { "value": "__nuevo_distrito__", "label": "Prefiero no indicarlo", "group": "Otro" }
+      ]
+    },
+    "n_miembros": {
+      "type": "integer",
+      "label": "¿Cuántas personas viven habitualmente en tu hogar?",
+      "help": "Cuenta a quienes duermen aquí y comparten los gastos de comida, incluyéndote. No cuentes a trabajadoras del hogar ni a inquilinos.",
+      "min": 1,
+      "max": 20,
+      "unit": ["persona", "personas"]
+    },
+    "tipo_vivienda": {
+      "type": "choice",
+      "label": "¿En qué tipo de vivienda vive tu hogar?",
+      "options": [
+        { "value": 1, "label": "Casa independiente" },
+        { "value": 2, "label": "Departamento en edificio" },
+        { "value": 3, "label": "Vivienda en quinta" },
+        { "value": 4, "label": "Casa de vecindad", "hint": "Callejón, solar o corralón" },
+        { "value": 5, "label": "Choza o cabaña" },
+        { "value": 6, "label": "Vivienda improvisada", "hint": "Estera, cartón u otros materiales temporales" },
+        { "value": 7, "label": "Local no hecho para vivienda", "hint": "Tienda, taller, almacén" },
+        { "value": 8, "label": "Otro tipo" }
+      ]
+    },
+    "material_pared": {
+      "type": "choice",
+      "label": "¿De qué material son la mayoría de las paredes exteriores?",
+      "options": [
+        { "value": 1, "label": "Ladrillo o bloque de cemento" },
+        { "value": 2, "label": "Piedra o sillar con cal o cemento" },
+        { "value": 3, "label": "Adobe" },
+        { "value": 4, "label": "Tapia" },
+        { "value": 5, "label": "Quincha", "hint": "Caña con barro" },
+        { "value": 6, "label": "Piedra con barro" },
+        { "value": 7, "label": "Madera" },
+        { "value": 8, "label": "Triplay, calamina o estera" },
+        { "value": 9, "label": "Otro material" }
+      ]
+    },
+    "material_piso": {
+      "type": "choice",
+      "label": "¿De qué material es la mayor parte del piso?",
+      "options": [
+        { "value": 1, "label": "Parquet o madera pulida" },
+        { "value": 2, "label": "Vinílico o láminas asfálticas" },
+        { "value": 3, "label": "Losetas, terrazo o cerámico" },
+        { "value": 4, "label": "Madera (entablado)" },
+        { "value": 5, "label": "Cemento" },
+        { "value": 6, "label": "Tierra" },
+        { "value": 7, "label": "Otro material" }
+      ]
+    },
+    "total_habitaciones": {
+      "type": "integer",
+      "label": "¿Cuántas habitaciones tiene la vivienda en total?",
+      "help": "Cuenta sala, comedor, dormitorios y estudio. No cuentes baños, cocina, pasadizos ni garaje.",
+      "min": 1,
+      "max": 20,
+      "unit": ["habitación", "habitaciones"]
+    },
+    "total_dormitorios": {
+      "type": "integer",
+      "label": "De esas habitaciones, ¿cuántas se usan solo para dormir?",
+      "min": 0,
+      "max": 20,
+      "unit": ["dormitorio", "dormitorios"]
+    },
+    "tenencia_vivienda": {
+      "type": "choice",
+      "label": "La vivienda que ocupa tu hogar es…",
+      "options": [
+        { "value": 1, "label": "Alquilada" },
+        { "value": 2, "label": "Propia, totalmente pagada" },
+        { "value": 4, "label": "Propia, pagándola a plazos" },
+        { "value": 3, "label": "Propia, en terreno ocupado", "hint": "Sin título de propiedad (invasión)" },
+        { "value": 5, "label": "Cedida por el centro de trabajo" },
+        { "value": 6, "label": "Cedida por otro hogar o institución", "hint": "Sin pagar alquiler" },
+        { "value": 7, "label": "Otra forma" }
+      ]
+    },
+    "fuente_agua": {
+      "type": "choice",
+      "label": "¿De dónde obtiene el agua tu hogar principalmente?",
+      "options": [
+        { "value": 1, "label": "Red pública, dentro de la vivienda" },
+        { "value": 2, "label": "Red pública, fuera de la vivienda", "hint": "Dentro del edificio o del lote" },
+        { "value": 3, "label": "Pilón o pileta pública" },
+        { "value": 4, "label": "Camión cisterna" },
+        { "value": 5, "label": "Pozo" },
+        { "value": 6, "label": "Manantial o puquio" },
+        { "value": 8, "label": "Río, acequia o laguna" },
+        { "value": 7, "label": "Otra fuente" }
+      ]
+    },
+    "agua_todos_los_dias": {
+      "type": "choice",
+      "label": "¿Tienen agua todos los días de la semana?",
+      "visible_if": { "fuente_agua": [1, 2, 3] },
+      "options": [
+        { "value": 1, "label": "Sí, todos los días" },
+        { "value": 2, "label": "No, solo algunos días u horas" }
+      ]
+    },
+    "conexion_bano": {
+      "type": "choice",
+      "label": "¿A dónde está conectado el baño de la vivienda?",
+      "options": [
+        { "value": 1, "label": "Desagüe de red pública, dentro de la vivienda" },
+        { "value": 2, "label": "Desagüe de red pública, fuera de la vivienda", "hint": "Dentro del edificio o del lote" },
+        { "value": 4, "label": "Pozo séptico, tanque séptico o biodigestor" },
+        { "value": 3, "label": "Letrina con tratamiento" },
+        { "value": 5, "label": "Pozo ciego o negro" },
+        { "value": 6, "label": "Río, acequia o canal" },
+        { "value": 9, "label": "No hay baño", "hint": "Campo abierto o al aire libre" },
+        { "value": 7, "label": "Otro" }
+      ]
+    },
+    "combustible_cocina": {
+      "type": "choice",
+      "label": "¿Qué usan principalmente para cocinar?",
+      "options": [
+        { "value": 2, "label": "Gas en balón (GLP)" },
+        { "value": 3, "label": "Gas natural por tubería" },
+        { "value": 1, "label": "Electricidad" },
+        { "value": 5, "label": "Carbón" },
+        { "value": 6, "label": "Leña" },
+        { "value": 9, "label": "Bosta o estiércol" },
+        { "value": 7, "label": "Otro" },
+        { "value": 8, "label": "No cocinan en casa" }
+      ]
+    },
+    "tiene_internet": {
+      "type": "choice",
+      "label": "¿Tu hogar tiene acceso a internet?",
+      "help": "Puede ser internet fijo en casa o un plan de datos móviles que use el hogar.",
+      "options": [
+        { "value": 1, "label": "Sí" },
+        { "value": 0, "label": "No" }
+      ]
+    },
+    "jefe_mujer": {
+      "type": "choice",
+      "label": "La jefa o jefe del hogar es…",
+      "help": "Es la persona a quien los demás integrantes reconocen como responsable del hogar.",
+      "options": [
+        { "value": 1, "label": "Mujer" },
+        { "value": 0, "label": "Hombre" }
+      ]
+    },
+    "jefe_edad": {
+      "type": "integer",
+      "label": "¿Qué edad tiene la jefa o jefe del hogar?",
+      "min": 18,
+      "max": 100,
+      "unit": ["año", "años"]
+    },
+    "educ_jefe": {
+      "type": "choice",
+      "label": "¿Cuál es el último nivel de estudios que aprobó la jefa o jefe del hogar?",
+      "options": [
+        { "value": 1, "label": "Sin nivel" },
+        { "value": 2, "label": "Educación inicial o básica especial" },
+        { "value": 3, "label": "Primaria incompleta" },
+        { "value": 4, "label": "Primaria completa" },
+        { "value": 5, "label": "Secundaria incompleta" },
+        { "value": 6, "label": "Secundaria completa" },
+        { "value": 7, "label": "Superior técnica incompleta" },
+        { "value": 8, "label": "Superior técnica completa" },
+        { "value": 9, "label": "Superior universitaria incompleta" },
+        { "value": 10, "label": "Superior universitaria completa" },
+        { "value": 11, "label": "Maestría o doctorado" }
+      ]
+    },
+    "educ_max_hogar": {
+      "type": "choice",
+      "label": "¿Cuál es el nivel más alto que alcanzó esa persona?",
+      "options_from": "educ_jefe"
+    },
+    "n_ninos_0_5": {
+      "type": "integer",
+      "label": "Niñas y niños de 0 a 5 años",
+      "min": 0,
+      "max": 19
+    },
+    "n_menores_14": {
+      "type": "integer",
+      "label": "Menores de 14 años (incluye a los de 0 a 5)",
+      "min": 0,
+      "max": 19
+    },
+    "n_mayores_65": {
+      "type": "integer",
+      "label": "Personas de 65 años a más",
+      "min": 0,
+      "max": 20
+    },
+    "jefe_ocupado": {
+      "type": "choice",
+      "label": "La semana pasada, ¿la jefa o jefe del hogar trabajó?",
+      "help": "Cuenta cualquier trabajo de al menos una hora: empleo, negocio propio o cachuelos. También si tiene empleo pero estuvo de vacaciones o con licencia.",
+      "options": [
+        { "value": 1, "label": "Sí, trabajó" },
+        { "value": 0, "label": "No trabajó" }
+      ]
+    },
+    "jefe_horas_semanales": {
+      "type": "integer",
+      "label": "¿Cuántas horas trabajó en total la semana pasada?",
+      "help": "Suma las horas de todos sus trabajos.",
+      "min": 1,
+      "max": 100,
+      "visible_if": { "jefe_ocupado": [1] },
+      "unit": ["hora", "horas"]
+    },
+    "jefe_cat_ocupacional": {
+      "type": "choice",
+      "label": "En su trabajo principal, se desempeña como…",
+      "visible_if": { "jefe_ocupado": [1] },
+      "options": [
+        { "value": 3, "label": "Empleada o empleado" },
+        { "value": 4, "label": "Obrera u obrero" },
+        { "value": 2, "label": "Independiente", "hint": "Trabaja por cuenta propia" },
+        { "value": 1, "label": "Empleador o patrono", "hint": "Tiene trabajadores a su cargo" },
+        { "value": 6, "label": "Trabajador del hogar" },
+        { "value": 5, "label": "Familiar sin pago", "hint": "Ayuda en el negocio de un familiar" },
+        { "value": 7, "label": "Otro" }
+      ]
+    },
+    "jefe_empresa_ruc": {
+      "type": "choice",
+      "label": "El negocio o institución donde trabaja, ¿cómo está registrado?",
+      "help": "Si no lo sabes con certeza, elige la opción más cercana.",
+      "visible_if": { "jefe_ocupado": [1] },
+      "options": [
+        { "value": 1, "label": "Empresa o institución formal", "hint": "S.A., S.R.L., E.I.R.L. o sector público" },
+        { "value": 2, "label": "Persona natural con RUC", "hint": "Incluye RUS o RER" },
+        { "value": 3, "label": "Sin registro", "hint": "No tiene RUC" }
+      ]
+    },
+    "jefe_sin_pension": {
+      "type": "choice",
+      "label": "¿La jefa o jefe del hogar está afiliado a un sistema de pensiones?",
+      "help": "AFP, ONP u otro régimen.",
+      "options": [
+        { "value": 0, "label": "Sí, está afiliado" },
+        { "value": 1, "label": "No está afiliado" }
+      ]
+    },
+    "n_ocupados": {
+      "type": "integer",
+      "label": "En total, ¿cuántas personas del hogar trabajaron la semana pasada?",
+      "help": "Incluye a la jefa o jefe si trabajó. Solo cuenta a personas de 14 años a más.",
+      "min": 0,
+      "max": 20,
+      "unit": ["persona", "personas"]
+    }
+  }
+}
