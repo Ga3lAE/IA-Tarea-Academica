@@ -5,3 +5,5 @@
 **/.pytest_cache
 **/*.pyc
 backend/tests
+*.pem
+README.md

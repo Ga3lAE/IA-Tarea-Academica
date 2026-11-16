@@ -1,23 +1,22 @@
-"""Etapa 2: estimación con el modelo entrenado del proyecto (`models/winner_bundle.joblib`).
+"""Etapa 2: estimación con el modelo entrenado del proyecto (`backend/models/winner_bundle.joblib`).
 
-No duplica lógica del entrenamiento: reutiliza `predict_single_household` de `src/inference.py`
-(la misma función de la encuesta por consola). Este módulo solo localiza el artefacto, lo carga una
-vez y traduce las contribuciones TreeSHAP del explicador a frases legibles para el ciudadano.
+Reutiliza el núcleo autocontenido de `api/inference.py` (equivalente a `src/inference.py`).
+Este módulo localiza el artefacto dentro del backend, lo carga una sola vez y traduce
+las contribuciones TreeSHAP del explicador a frases legibles para el ciudadano.
 """
 from __future__ import annotations
 
 import math
 import os
-import sys
 import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from . import catalog
+from .inference import load_deployment_bundle, predict_single_household
 
 _HERE = Path(__file__).resolve()
-# Repositorio: app/backend/api/predictor.py -> raíz = parents[3] | Contenedor: /srv/api/predictor.py -> /srv
-_BASES = [_HERE.parents[3], _HERE.parents[1]] if len(_HERE.parents) > 3 else [_HERE.parents[1]]
+_DEFAULT_BUNDLE = _HERE.parents[1] / "models" / "winner_bundle.joblib"
 
 _lock = threading.Lock()
 _state: Dict[str, Any] = {"bundle": None, "error": None, "predict": None}
@@ -61,17 +60,9 @@ ETIQUETAS = {
 }
 
 
-def _find(rel: str) -> Optional[Path]:
-    for base in _BASES:
-        p = base / rel
-        if p.exists():
-            return p
-    return None
-
-
-def bundle_path() -> Optional[Path]:
+def bundle_path() -> Path:
     env = os.getenv("MODEL_BUNDLE_PATH")
-    return Path(env) if env else _find("models/winner_bundle.joblib")
+    return Path(env) if env else _DEFAULT_BUNDLE
 
 
 def load_model() -> None:
@@ -80,17 +71,9 @@ def load_model() -> None:
         if _state["bundle"] is not None:
             return
         try:
-            src_dir = _find("src/inference.py")
-            if src_dir is None:
-                raise FileNotFoundError("No se encontró src/inference.py (necesario para usar el modelo).")
-            root = str(src_dir.parents[1])
-            if root not in sys.path:
-                sys.path.insert(0, root)
-            from src.inference import load_deployment_bundle, predict_single_household  # noqa: E402
-
             path = bundle_path()
-            if path is None or not path.exists():
-                raise FileNotFoundError("No se encontró models/winner_bundle.joblib.")
+            if not path.exists():
+                raise FileNotFoundError(f"No se encontró el artefacto del modelo en '{path}'.")
             _state["bundle"] = load_deployment_bundle(path)
             _state["predict"] = predict_single_household
             _state["error"] = None

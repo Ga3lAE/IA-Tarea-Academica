@@ -1,6 +1,8 @@
 # Encuesta y estimación web de pobreza monetaria del hogar (Lima Metropolitana y Callao)
 
-Interfaz ciudadana y API que recogen, en lenguaje sencillo, las respuestas crudas del hogar. Al terminar, el **modelo entrenado del proyecto** (`models/winner_bundle.joblib`: Stacking entrenado con 7,289 hogares de la ENAHO 2024–2025) estima la probabilidad de pobreza monetaria y explica qué características pesaron más. La API no guarda respuestas.
+Interfaz ciudadana y API que recogen, en lenguaje sencillo, las respuestas crudas del hogar. Al terminar, el **modelo entrenado del proyecto** (`backend/models/winner_bundle.joblib`: Stacking entrenado con 7,289 hogares de la ENAHO 2024–2025) estima la probabilidad de pobreza monetaria y explica qué características pesaron más. La API no guarda respuestas.
+
+La carpeta `app/` es **100% autocontenida**: no referencia archivos ni carpetas de la raíz del repositorio, por lo que puede copiarse de forma independiente al servidor.
 
 ```
 app/
@@ -8,12 +10,14 @@ app/
 ├── backend/                     ← FastAPI + Pydantic v2
 │   ├── api/  main.py            ← rutas; carga el modelo una vez al iniciar
 │   │         rules.py           ← saltos de la ENAHO y coherencia entre preguntas
-│   │         predictor.py       ← estimación: reutiliza src/inference.py y traduce los factores a lenguaje ciudadano
+│   │         inference.py       ← núcleo de inferencia R^28, TreeSHAP y compatibilidad del .joblib
+│   │         predictor.py       ← carga el artefacto y traduce factores a lenguaje ciudadano
 │   │         schemas.py, summary.py, catalog.py
-│   └── tests/                   ← 32 pruebas (pytest): validación + paridad exacta con la encuesta por consola
+│   ├── models/winner_bundle.joblib ← copia del modelo entrenado del proyecto
+│   └── tests/                   ← pruebas autocontenidas (pytest): validación + paridad con la consola
 ├── frontend/                    ← React 19 + Vite + TypeScript + Tailwind 4 (estilo "chai latte")
 │   └── nginx.conf               ← sirve la web y redirige /api al contenedor de la API
-└── docker-compose.yml           ← despliegue: 2 contenedores (api, web)
+└── docker-compose.yml           ← despliegue autocontenido: 2 contenedores (api, web)
 ```
 
 ## Flujo
@@ -46,7 +50,7 @@ La web no calcula ratios ni escala variables: envía conteos y códigos. Los rat
 | POST | `/api/v1/predict` | 200: folio, resumen, `answers_normalized` y `prediction` (probabilidad, percentil, nivel, umbrales, `factores_riesgo`, `factores_proteccion`) · 422: `{"errors": [{"field", "message"}]}` · 503 si el modelo no cargó |
 | POST | `/api/v1/surveys/validate` | Solo validación (sin modelo) |
 
-**Sin duplicar el entrenamiento:** `api/predictor.py` llama a `predict_single_household` de `src/inference.py`, la misma función que `src/encuesta_pobreza.py`. Las pruebas confirman que los 3 perfiles de `PRESET_HOUSEHOLDS` enviados por la web dan exactamente las cifras de la consola: 91.44%, 59.52% y 4.17%. Documentación interactiva: `/api/docs`.
+**Sin depender de `src/` en tiempo de ejecución:** `api/inference.py` encapsula únicamente el pipeline de inferencia y el explicador TreeSHAP necesarios para cargar `backend/models/winner_bundle.joblib` sin duplicar código de ingesta ni entrenamiento. Las pruebas confirman que los 3 perfiles de referencia enviados por la web dan exactamente las cifras de la consola: 91.44%, 59.52% y 4.17%. Documentación interactiva: `/api/docs`.
 
 ## Desarrollo local
 
@@ -64,7 +68,7 @@ npm install
 npm run dev
 ```
 
-En local, la API encuentra `src/` y `models/winner_bundle.joblib` en la raíz del repositorio.
+En local, la API carga el artefacto desde `app/backend/models/winner_bundle.joblib` (o la ruta en `MODEL_BUNDLE_PATH`).
 
 ## Despliegue con Docker
 
@@ -75,9 +79,9 @@ docker compose ps                 # "api" debe figurar healthy (el healthcheck e
 curl http://localhost/health
 ```
 
-**Contexto de la imagen de la API:** es la raíz del repositorio. La imagen copia `src/*.py` y `models/winner_bundle.joblib`, y el `.dockerignore` de la raíz deja fuera `Data/`, `notebooks/` y `Documentation/`. Así el modelo viaja dentro de la imagen sin duplicarlo en `app/`.
+**Contexto de las imágenes:** es la propia carpeta `app/`. Ni `backend/Dockerfile` ni `frontend/Dockerfile` acceden a directorios externos, y `app/.dockerignore` excluye `*.pem`, `node_modules`, `.venv` y pruebas. Para desplegar de forma independiente basta copiar `app/` al servidor (sin incluir `ML-key.pem`).
 
-**Si se reentrena el modelo:** volver a ejecutar `docker compose up -d --build`.
+**Si se reentrena el modelo desde la raíz (`src/`):** copiar el nuevo `models/winner_bundle.joblib` a `app/backend/models/winner_bundle.joblib` y volver a ejecutar `docker compose up -d --build`.
 
 ### En AWS Academy Learner Lab (EC2)
 
@@ -88,10 +92,9 @@ curl http://localhost/health
    sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2 docker-buildx git
    sudo usermod -aG docker ubuntu && newgrp docker
    ```
-3. **Clonar y levantar:**
+3. **Subir `app/` (o clonar el repo) y levantar:**
    ```bash
-   git clone https://github.com/Ga3lAE/IA-Tarea-Academica.git
-   cd IA-Tarea-Academica/app
+   cd app
    docker compose up -d --build
    ```
 4. **Abrir** `http://<IP pública de la instancia>`.

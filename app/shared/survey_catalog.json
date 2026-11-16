@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "Catálogo único de la encuesta web. Cada clave de 'fields' coincide con una entrada cruda del modelo (src/inference.py: build_household_dataframe_from_answers). Los códigos 'value' son los de la ENAHO (INEI); las etiquetas son las que ve el ciudadano.",
+  "description": "Catálogo único de la encuesta web. Cada clave de 'fields' coincide con una entrada cruda del modelo (api/inference.py: build_household_dataframe_from_answers). Los códigos 'value' son los de la ENAHO (INEI); las etiquetas son las que ve el ciudadano.",
   "fields": {
     "es_hogar_secundario": {
       "type": "boolean",

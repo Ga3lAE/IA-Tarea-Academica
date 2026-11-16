@@ -142,9 +142,8 @@ def test_rango_amigable():
 
 def test_contrato_con_el_modelo():
     """Toda respuesta que lee build_household_dataframe_from_answers existe en la salida normalizada."""
-    src = Path(__file__).resolve().parents[3] / "src" / "inference.py"
-    if not src.exists():
-        pytest.skip("src/inference.py no disponible")
+    src = Path(__file__).resolve().parents[1] / "api" / "inference.py"
+    assert src.exists(), f"No existe {src}"
     text = src.read_text(encoding="utf-8")
     start = text.index("def build_household_dataframe_from_answers")
     body = text[start:text.index("\ndef ", start + 10)]

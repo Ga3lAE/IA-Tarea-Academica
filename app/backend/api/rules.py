@@ -1,7 +1,7 @@
 """Reglas de salto de la ENAHO y coherencia entre preguntas.
 
 `validate_and_normalize` devuelve el diccionario normalizado que en la Etapa 2 se
-entregará tal cual a `build_household_dataframe_from_answers` (src/inference.py),
+entregará tal cual a `build_household_dataframe_from_answers` (api/inference.py),
 o la lista de errores por campo si las respuestas no son coherentes.
 """
 from __future__ import annotations

@@ -1,12 +1,14 @@
-"""Pruebas de la Etapa 2: estimación con models/winner_bundle.joblib a través de la API."""
+"""Pruebas de la Etapa 2: estimación autocontenida con backend/models/winner_bundle.joblib."""
+import sys
+
 import pytest
 from fastapi.testclient import TestClient
 
 from api import predictor
+from api.inference import load_deployment_bundle
 from api.main import app
 
 predictor.load_model()
-pytestmark = pytest.mark.skipif(not predictor.model_ready(), reason=f"Modelo no disponible: {predictor.model_error()}")
 
 client = TestClient(app)
 URL = "/api/v1/predict"
@@ -18,13 +20,95 @@ ESPERADO = {
     "formal_estable": (0.0417, 4.8),
 }
 
+# Réplica exacta de los 3 perfiles de referencia para probar la API sin importar src/.
+PRESET_HOUSEHOLDS = {
+    "vulnerable_hacinado": {
+        "ubigeo": "150132",
+        "es_hogar_secundario": False,
+        "tipo_vivienda": 6,
+        "material_pared": 8,
+        "material_piso": 6,
+        "total_habitaciones": 2,
+        "total_dormitorios": 1,
+        "tenencia_vivienda": 3,
+        "fuente_agua": 4,
+        "agua_todos_los_dias": None,
+        "conexion_bano": 5,
+        "combustible_cocina": 2,
+        "tiene_internet": 0,
+        "n_miembros": 6,
+        "n_ninos_0_5": 2,
+        "n_menores_14": 3,
+        "n_mayores_65": 0,
+        "jefe_edad": 36,
+        "jefe_mujer": 1,
+        "educ_jefe": 4,
+        "educ_max_hogar": 5,
+        "n_ocupados": 1,
+        "jefe_ocupado": 1,
+        "jefe_horas_semanales": 48,
+        "jefe_cat_ocupacional": 2,
+        "jefe_empresa_ruc": 3,
+        "jefe_sin_pension": 1,
+    },
+    "secundario_sin_m01": {
+        "ubigeo": "150108",
+        "es_hogar_secundario": True,
+        "tenencia_vivienda": 6,
+        "fuente_agua": 1,
+        "agua_todos_los_dias": 1,
+        "conexion_bano": 1,
+        "combustible_cocina": 2,
+        "tiene_internet": 1,
+        "n_miembros": 4,
+        "n_ninos_0_5": 1,
+        "n_menores_14": 2,
+        "n_mayores_65": 0,
+        "jefe_edad": 29,
+        "jefe_mujer": 0,
+        "educ_jefe": 6,
+        "educ_max_hogar": 6,
+        "n_ocupados": 1,
+        "jefe_ocupado": 1,
+        "jefe_horas_semanales": 45,
+        "jefe_cat_ocupacional": 4,
+        "jefe_empresa_ruc": 3,
+        "jefe_sin_pension": 1,
+    },
+    "formal_estable": {
+        "ubigeo": "150140",
+        "es_hogar_secundario": False,
+        "tipo_vivienda": 2,
+        "material_pared": 1,
+        "material_piso": 1,
+        "total_habitaciones": 4,
+        "total_dormitorios": 2,
+        "tenencia_vivienda": 4,
+        "fuente_agua": 1,
+        "agua_todos_los_dias": 1,
+        "conexion_bano": 1,
+        "combustible_cocina": 3,
+        "tiene_internet": 1,
+        "n_miembros": 3,
+        "n_ninos_0_5": 0,
+        "n_menores_14": 1,
+        "n_mayores_65": 0,
+        "jefe_edad": 42,
+        "jefe_mujer": 0,
+        "educ_jefe": 10,
+        "educ_max_hogar": 11,
+        "n_ocupados": 2,
+        "jefe_ocupado": 1,
+        "jefe_horas_semanales": 44,
+        "jefe_cat_ocupacional": 3,
+        "jefe_empresa_ruc": 1,
+        "jefe_sin_pension": 0,
+    },
+}
+
 
 def _preset_payload(name):
-    from src.inference import PRESET_HOUSEHOLDS
-    p = {k: v for k, v in PRESET_HOUSEHOLDS[name].items() if k != "descripcion"}
-    if p.get("jefe_horas_semanales") is not None:
-        p["jefe_horas_semanales"] = int(p["jefe_horas_semanales"])
-    return p
+    return dict(PRESET_HOUSEHOLDS[name])
 
 
 @pytest.mark.parametrize("name", list(ESPERADO))
@@ -79,3 +163,13 @@ def test_health_informa_modelo():
     h = client.get("/health").json()
     assert h["model_ready"] is True and h["stage"] == "prediction"
     assert h["model"]["nombre"] == "Stacking_Ensemble"
+
+
+def test_carga_sin_paquete_src_externo(monkeypatch):
+    """El backend deserializa winner_bundle.joblib sin depender de src/ fuera de app/."""
+    backend_root = str(predictor.bundle_path().parents[1])
+    monkeypatch.delitem(sys.modules, "src", raising=False)
+    monkeypatch.delitem(sys.modules, "src.preprocessing", raising=False)
+    monkeypatch.setattr(sys, "path", [backend_root])
+    bundle = load_deployment_bundle(predictor.bundle_path())
+    assert "pipe_stacking" in bundle and "pipe_gbdt" in bundle

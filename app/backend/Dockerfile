@@ -1,6 +1,5 @@
 # API de la encuesta: validación + estimación con el modelo del proyecto.
-# Contexto de construcción: RAÍZ del repositorio (ver app/docker-compose.yml y /.dockerignore),
-# para copiar el modelo entrenado y el código de inferencia sin duplicarlos dentro de app/.
+# Contexto de construcción: carpeta app/ (ver app/docker-compose.yml y app/.dockerignore).
 FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -10,15 +9,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     MODEL_BUNDLE_PATH=/srv/models/winner_bundle.joblib
 
 WORKDIR /srv
-COPY app/backend/requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install -r requirements.txt
 
-# Código de la API y catálogo único de la encuesta
-COPY app/backend/api ./api
-COPY app/shared ./shared
-# Inferencia del proyecto (src/inference.py y dependencias) y modelo entrenado
-COPY src/*.py ./src/
-COPY models/winner_bundle.joblib ./models/winner_bundle.joblib
+# Código de la API, modelo entrenado y catálogo único de la encuesta
+COPY backend/api ./api
+COPY backend/models/winner_bundle.joblib ./models/winner_bundle.joblib
+COPY shared ./shared
 
 RUN useradd --system --uid 10001 appuser
 USER appuser
