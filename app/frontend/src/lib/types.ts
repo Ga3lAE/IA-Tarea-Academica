@@ -46,12 +46,41 @@ export interface SummaryBlock {
   items: SummaryItem[];
 }
 
+export interface Factor {
+  variable: string;
+  etiqueta: string;
+  valor: string;
+  /** Contribución en log-odds del modelo explicador (positiva eleva la estimación). */
+  contribucion: number;
+}
+
+export interface Prediction {
+  probabilidad: number;
+  percentil: number;
+  nivel: "alto" | "medio" | "bajo";
+  en_riesgo: boolean;
+  prioritario_top20: boolean;
+  umbral_riesgo: number;
+  umbral_prioridad: number;
+  probabilidad_explicador: number;
+  factores_riesgo: Factor[];
+  factores_proteccion: Factor[];
+  modelo: {
+    nombre?: string;
+    explicador?: string;
+    hogares_entrenamiento: number;
+    anios: number[];
+    creado: string;
+  };
+}
+
 export interface Receipt {
   receipt_id: string;
   received_at: string;
   status: string;
   message: string;
   summary: SummaryBlock[];
+  prediction?: Prediction;
 }
 
 export type FieldErrors = Partial<Record<string, string>>;

@@ -33,7 +33,7 @@ def fields(resp):
 
 
 def test_health_and_schema():
-    assert client.get("/health").json()["model_ready"] is False
+    assert client.get("/health").json()["status"] == "ok"
     schema = client.get("/api/v1/survey-schema").json()
     assert "n_miembros" in schema["fields"]
 

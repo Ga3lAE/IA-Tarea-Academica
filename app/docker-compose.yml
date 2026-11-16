@@ -2,8 +2,9 @@
 services:
   api:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      # Raíz del repo: la imagen copia src/*.py y models/winner_bundle.joblib (ver /.dockerignore)
+      context: ..
+      dockerfile: app/backend/Dockerfile
     restart: unless-stopped
     expose:
       - "8000"

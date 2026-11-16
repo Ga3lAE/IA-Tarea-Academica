@@ -1,0 +1,10 @@
+# Contexto mínimo para la imagen de la API (app/docker-compose.yml usa la raíz del repo como contexto del servicio "api").
+# Se excluye todo y solo se incluye lo que copia app/backend/Dockerfile (sin Data/, notebooks ni Documentation/).
+*
+!app/backend/requirements.txt
+!app/backend/api
+!app/shared
+!src/*.py
+!models/winner_bundle.joblib
+**/__pycache__
+**/*.pyc

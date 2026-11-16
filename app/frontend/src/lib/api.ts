@@ -8,7 +8,7 @@ export type SubmitResult =
 export async function submitSurvey(payload: Record<string, unknown>): Promise<SubmitResult> {
   let resp: Response;
   try {
-    resp = await fetch("/api/v1/surveys/validate", {
+    resp = await fetch("/api/v1/predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -27,5 +27,12 @@ export async function submitSurvey(payload: Record<string, unknown>): Promise<Su
     for (const e of body.errors ?? []) errors[e.field] ??= e.message;
     return { ok: false, kind: "invalid", errors };
   }
-  return { ok: false, kind: "server", message: "El servidor tuvo un problema al recibir la encuesta. Inténtalo nuevamente." };
+  if (resp.status === 503) {
+    return {
+      ok: false,
+      kind: "server",
+      message: "El modelo no está disponible en este momento. Tus respuestas siguen guardadas en este dispositivo; inténtalo nuevamente en unos minutos.",
+    };
+  }
+  return { ok: false, kind: "server", message: "El servidor tuvo un problema al calcular la estimación. Inténtalo nuevamente." };
 }

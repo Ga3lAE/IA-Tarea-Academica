@@ -1,27 +1,38 @@
-"""API de la encuesta web — Etapa 1 (recepción y validación, sin persistencia ni modelo)."""
+"""API de la encuesta web: validación de respuestas (Etapa 1) y estimación con el modelo (Etapa 2).
+
+No guarda respuestas: cada solicitud se valida, se evalúa en memoria y se descarta.
+"""
 from __future__ import annotations
 
 import secrets
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from . import catalog
+from . import catalog, predictor
 from .rules import validate_and_normalize
-from .schemas import ErrorResponse, FieldError, SurveyAnswers, ValidationReceipt
+from .schemas import ErrorResponse, FieldError, PredictionReceipt, SurveyAnswers, ValidationReceipt
 from .summary import build_summary
 
-STAGE = "validation_only"
 _FOLIO_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    predictor.load_model()  # una sola carga del .joblib por proceso
+    yield
+
 
 app = FastAPI(
     title="Encuesta de Condiciones de Vida del Hogar — API",
     version=catalog.load_catalog()["version"],
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
+    lifespan=lifespan,
 )
 
 
@@ -54,10 +65,29 @@ async def _validation_handler(_: Request, exc: RequestValidationError) -> JSONRe
     return JSONResponse(status_code=422, content=body.model_dump())
 
 
+def _invalid(errors) -> JSONResponse:
+    body = ErrorResponse(errors=[FieldError(field=f, message=m) for f, m in errors])
+    return JSONResponse(status_code=422, content=body.model_dump())
+
+
+def _folio() -> Tuple[str, str]:
+    now = datetime.now(timezone.utc)
+    folio = "ENC-{}-{}".format(now.year, "".join(secrets.choice(_FOLIO_ALPHABET) for _ in range(6)))
+    return folio, now.isoformat(timespec="seconds")
+
+
 @app.get("/health")
 @app.get("/api/health")
 def health() -> Dict[str, Any]:
-    return {"status": "ok", "stage": STAGE, "model_ready": False, "catalog_version": catalog.load_catalog()["version"]}
+    ready = predictor.model_ready()
+    return {
+        "status": "ok",
+        "stage": "prediction" if ready else "validation_only",
+        "model_ready": ready,
+        "model": predictor.model_info() if ready else None,
+        "model_error": predictor.model_error(),
+        "catalog_version": catalog.load_catalog()["version"],
+    }
 
 
 @app.get("/api/v1/survey-schema")
@@ -65,23 +95,44 @@ def survey_schema() -> Dict[str, Any]:
     return catalog.load_catalog()
 
 
-@app.post(
-    "/api/v1/surveys/validate",
-    response_model=ValidationReceipt,
-    responses={422: {"model": ErrorResponse}},
-)
+@app.post("/api/v1/surveys/validate", response_model=ValidationReceipt, responses={422: {"model": ErrorResponse}})
 def validate_survey(answers: SurveyAnswers):
+    """Etapa 1: solo valida y resume (útil si el modelo no está disponible)."""
     data, errors = validate_and_normalize(answers)
     if errors:
-        body = ErrorResponse(errors=[FieldError(field=f, message=m) for f, m in errors])
-        return JSONResponse(status_code=422, content=body.model_dump())
-
-    now = datetime.now(timezone.utc)
-    folio = "ENC-{}-{}".format(now.year, "".join(secrets.choice(_FOLIO_ALPHABET) for _ in range(6)))
+        return _invalid(errors)
+    folio, ts = _folio()
     return ValidationReceipt(
         receipt_id=folio,
-        received_at=now.isoformat(timespec="seconds"),
-        message="Encuesta recibida y validada. El análisis del modelo se integrará en la siguiente etapa.",
+        received_at=ts,
+        message="Encuesta recibida y validada.",
         summary=build_summary(data),
         answers_normalized=data,
+    )
+
+
+@app.post(
+    "/api/v1/predict",
+    response_model=PredictionReceipt,
+    responses={422: {"model": ErrorResponse}, 503: {"description": "Modelo no disponible"}},
+)
+def predict_household(answers: SurveyAnswers):
+    """Etapa 2: valida las respuestas y estima la probabilidad de pobreza monetaria del hogar."""
+    data, errors = validate_and_normalize(answers)
+    if errors:
+        return _invalid(errors)
+    if not predictor.model_ready():
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "message": "El modelo no está disponible en este momento.",
+                     "detail": predictor.model_error()},
+        )
+    folio, ts = _folio()
+    return PredictionReceipt(
+        receipt_id=folio,
+        received_at=ts,
+        message="Estimación calculada con el modelo del proyecto. Las respuestas no se guardaron.",
+        summary=build_summary(data),
+        answers_normalized=data,
+        prediction=predictor.predict(data),
     )

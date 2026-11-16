@@ -73,6 +73,49 @@ class SummaryBlock(BaseModel):
     items: List[SummaryItem]
 
 
+class Factor(BaseModel):
+    variable: str
+    etiqueta: str
+    valor: str
+    contribucion: float
+
+
+class ModelInfo(BaseModel):
+    nombre: Optional[str] = None
+    explicador: Optional[str] = None
+    hogares_entrenamiento: int = 0
+    anios: List[int] = []
+    creado: str = ""
+    pr_auc_oof: Optional[float] = None
+    roc_auc_oof: Optional[float] = None
+    umbral_riesgo: Optional[float] = None
+    umbral_prioridad: Optional[float] = None
+
+
+class Prediction(BaseModel):
+    probabilidad: float
+    percentil: float
+    nivel: Literal["alto", "medio", "bajo"]
+    en_riesgo: bool
+    prioritario_top20: bool
+    umbral_riesgo: float
+    umbral_prioridad: float
+    probabilidad_explicador: float
+    factores_riesgo: List[Factor]
+    factores_proteccion: List[Factor]
+    modelo: ModelInfo
+
+
+class PredictionReceipt(BaseModel):
+    receipt_id: str
+    received_at: str
+    status: Literal["predicted"] = "predicted"
+    message: str
+    summary: List[SummaryBlock]
+    answers_normalized: Dict[str, Any]
+    prediction: Prediction
+
+
 class ValidationReceipt(BaseModel):
     receipt_id: str
     received_at: str

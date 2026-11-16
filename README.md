@@ -96,6 +96,7 @@ Tarea Académica/
 ├── IMPLEMENTATION.md             # Bitácora detallada de sprints, auditorías y roadmap
 ├── requirements.txt              # Dependencias del proyecto
 ├── .gitignore                    # Reglas de exclusión para Git, temporales y LaTeX
+├── .dockerignore                 # Contexto mínimo de la imagen de la API (src/*.py + modelo)
 │
 ├── src/                          # Biblioteca modular de Python (KISS)
 │   ├── io_enaho.py               # Lectura de los 5 módulos ENAHO
@@ -113,9 +114,9 @@ Tarea Académica/
 │   ├── pipeline_completo.ipynb   # Flujo end-to-end: ingesta, EDA, modelado y SHAP
 │   └── README.md                 # Guía del flujo interactivo
 │
-├── app/                          # Encuesta web (ver app/README.md)
+├── app/                          # Encuesta y estimación web con el modelo entrenado (ver app/README.md)
 │   ├── shared/survey_catalog.json # Catálogo único de preguntas y códigos ENAHO (web + API)
-│   ├── backend/                  # FastAPI: recepción y validación de respuestas (Etapa 1)
+│   ├── backend/                  # FastAPI: validación y estimación con models/winner_bundle.joblib
 │   ├── frontend/                 # React + Vite + Tailwind (portada, 5 pasos, revisión y comprobante)
 │   └── docker-compose.yml        # Despliegue en EC2: docker compose up -d --build
 │

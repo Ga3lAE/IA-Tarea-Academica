@@ -4,13 +4,12 @@ import {
   Check,
   ChevronDown,
   ChevronLeft,
-  CircleCheck,
   ClipboardList,
   LoaderCircle,
   Pencil,
   RotateCcw,
   Save,
-  Send,
+  Sparkles,
   TriangleExclamationPoint,
 } from "lucide-react";
 import { Header, LiveSummary, Progress, STEP_ICON } from "../components/chrome";
@@ -20,6 +19,7 @@ import { clearDraft, loadDraft, saveDraft } from "../lib/storage";
 import { STEP_META, summarizeStep } from "../lib/summary";
 import { EMPTY_ANSWERS, type Answers, type FieldErrors, type Receipt, type StepId } from "../lib/types";
 import { StepHogar, StepIntegrantes, StepServicios, StepTrabajo, StepVivienda, type StepProps } from "../steps/Steps";
+import { ResultView } from "./Result";
 
 type View = StepId | "revision";
 
@@ -141,7 +141,7 @@ export function Survey({ onHome }: { onHome: () => void }) {
     onHome();
   };
 
-  if (receipt) return <ReceiptView receipt={receipt} onHome={onHome} onNew={newSurvey} />;
+  if (receipt) return <ResultView receipt={receipt} onHome={onHome} onNew={newSurvey} />;
 
   const headerRight = (
     <div className="flex items-center gap-1 sm:gap-2">
@@ -224,8 +224,8 @@ export function Survey({ onHome }: { onHome: () => void }) {
             </button>
             {currentView === "revision" ? (
               <button type="button" className="btn-primary" onClick={submit} disabled={submitting}>
-                {submitting ? <LoaderCircle aria-hidden className="size-5 animate-spin" /> : <Send aria-hidden className="size-4" />}
-                {submitting ? "Enviando…" : "Enviar encuesta"}
+                {submitting ? <LoaderCircle aria-hidden className="size-5 animate-spin" /> : <Sparkles aria-hidden className="size-4" />}
+                {submitting ? "Calculando…" : "Ver mi estimación"}
               </button>
             ) : (
               <button type="button" className="btn-primary" onClick={next}>
@@ -269,7 +269,7 @@ function ReviewView({ answers, steps, onEdit }: { answers: Answers; steps: StepI
         <h1 id="step-title" className="font-display text-3xl font-semibold tracking-tight text-espresso sm:text-[2.1rem]">
           Revisa tus respuestas
         </h1>
-        <p className="mt-1 text-cinnamon">Si algo no es correcto, puedes editar cada bloque antes de enviar.</p>
+        <p className="mt-1 text-cinnamon">Si algo no es correcto, edita el bloque antes de calcular tu estimación.</p>
       </header>
       <div className="space-y-3.5">
         {steps.map((s) => {
@@ -299,74 +299,8 @@ function ReviewView({ answers, steps, onEdit }: { answers: Answers; steps: StepI
       </div>
       <p className="mt-6 flex items-start gap-2 text-sm text-cinnamon">
         <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-sage" />
-        Al enviar, el servidor verifica que las respuestas sean coherentes. No se guarda ningún dato que te identifique.
+        Al continuar, el modelo calcula la estimación en el momento. Tus respuestas no se guardan en el servidor.
       </p>
-    </>
-  );
-}
-
-/* --------------------------------------------------------------- Comprobante */
-
-function ReceiptView({ receipt, onHome, onNew }: { receipt: Receipt; onHome: () => void; onNew: () => void }) {
-  const fecha = new Date(receipt.received_at).toLocaleString("es-PE", {
-    dateStyle: "long",
-    timeStyle: "short",
-    timeZone: "America/Lima",
-  });
-  return (
-    <>
-      <Header onHome={onHome} />
-      <main className="mx-auto max-w-3xl px-5 pt-6 pb-16 sm:px-8">
-        <div className="card animate-rise overflow-hidden">
-          <div className="bg-sage-tint px-6 py-8 text-center sm:px-10">
-            <span className="mx-auto grid size-16 place-items-center rounded-full bg-sage text-surface shadow-[0_10px_24px_-12px_rgb(61_107_79/0.7)]">
-              <CircleCheck aria-hidden className="size-8" />
-            </span>
-            <h1 className="mt-5 font-display text-3xl font-semibold text-espresso sm:text-4xl">¡Gracias! Encuesta registrada</h1>
-            <p className="mx-auto mt-2 max-w-md text-cinnamon">Tus respuestas fueron recibidas y son coherentes entre sí.</p>
-            <dl className="mx-auto mt-6 inline-grid grid-cols-2 gap-x-8 gap-y-1 rounded-2xl bg-surface/80 px-6 py-3 text-left">
-              <dt className="text-xs font-semibold tracking-wide text-cinnamon uppercase">Folio</dt>
-              <dt className="text-xs font-semibold tracking-wide text-cinnamon uppercase">Fecha</dt>
-              <dd className="font-mono text-lg font-semibold tracking-wider text-espresso">{receipt.receipt_id}</dd>
-              <dd className="font-medium text-espresso">{fecha}</dd>
-            </dl>
-          </div>
-
-          <div className="px-6 py-7 sm:px-10">
-            <div className="flex items-start gap-3 rounded-2xl border border-honey/40 bg-latte/60 px-4 py-3.5">
-              <LoaderCircle aria-hidden className="mt-0.5 size-5 shrink-0 text-honey" />
-              <div>
-                <p className="font-semibold text-espresso">Estado: lista para evaluación</p>
-                <p className="text-sm leading-relaxed text-cinnamon">{receipt.message}</p>
-              </div>
-            </div>
-
-            <h2 className="mt-8 font-display text-xl font-semibold">Resumen de tu hogar</h2>
-            <div className="mt-4 space-y-5">
-              {receipt.summary.map((b) => (
-                <section key={b.block}>
-                  <h3 className="eyebrow">{b.block}</h3>
-                  <dl className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">
-                    {b.items.map((it) => (
-                      <div key={it.label}>
-                        <dt className="text-sm text-cinnamon">{it.label}</dt>
-                        <dd className="font-medium">{it.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-              ))}
-            </div>
-
-            <div className="mt-9 flex flex-wrap gap-3">
-              <button type="button" className="btn-primary" onClick={onNew}>
-                <RotateCcw aria-hidden className="size-4" />
-                Completar una nueva encuesta
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
     </>
   );
 }
