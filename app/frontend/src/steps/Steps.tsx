@@ -2,6 +2,7 @@ import { Callout, ChoiceCards, DistrictSelect, Question, SectionLabel, Stepper }
 import { optionsOf, type OptionValue } from "../lib/catalog";
 import {
   adultos14a64,
+  asksWorkplaceRegistry,
   freeAgeSlots,
   higherEducationAvailable,
   isSolo,
@@ -268,6 +269,7 @@ export function StepTrabajo({ a, set, errors }: StepProps) {
                 field="jefe_horas_semanales"
                 value={a.jefe_horas_semanales}
                 onChange={(v) => set("jefe_horas_semanales", v)}
+                min={0}
                 start={40}
                 clampOnBlur={false}
               />
@@ -292,11 +294,13 @@ export function StepTrabajo({ a, set, errors }: StepProps) {
               <ChoiceCards field="jefe_cat_ocupacional" value={a.jefe_cat_ocupacional} onChange={(v) => set("jefe_cat_ocupacional", num(v))} />
             </Question>
           </div>
-          <div className="border-t border-rim/70 pt-7 mt-7">
-            <Question field="jefe_empresa_ruc" error={errors.jefe_empresa_ruc}>
-              <ChoiceCards field="jefe_empresa_ruc" columns={3} value={a.jefe_empresa_ruc} onChange={(v) => set("jefe_empresa_ruc", num(v))} />
-            </Question>
-          </div>
+          {asksWorkplaceRegistry(a) && (
+            <div className="animate-rise border-t border-rim/70 pt-7 mt-7">
+              <Question field="jefe_empresa_ruc" error={errors.jefe_empresa_ruc}>
+                <ChoiceCards field="jefe_empresa_ruc" value={a.jefe_empresa_ruc} onChange={(v) => set("jefe_empresa_ruc", num(v))} />
+              </Question>
+            </div>
+          )}
         </div>
       )}
       <Question field="jefe_sin_pension" error={errors.jefe_sin_pension}>

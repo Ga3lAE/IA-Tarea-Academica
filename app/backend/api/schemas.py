@@ -46,7 +46,7 @@ class SurveyAnswers(BaseModel):
 
     # Paso 5: empleo y protección social
     jefe_ocupado: int
-    jefe_horas_semanales: Optional[int] = Field(default=None, ge=1, le=100)
+    jefe_horas_semanales: Optional[int] = Field(default=None, ge=0, le=100)
     jefe_cat_ocupacional: Optional[int] = None
     jefe_empresa_ruc: Optional[int] = None
     jefe_sin_pension: int

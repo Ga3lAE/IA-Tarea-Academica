@@ -113,6 +113,12 @@ Tarea Académica/
 │   ├── pipeline_completo.ipynb   # Flujo end-to-end: ingesta, EDA, modelado y SHAP
 │   └── README.md                 # Guía del flujo interactivo
 │
+├── app/                          # Encuesta web (ver app/README.md)
+│   ├── shared/survey_catalog.json # Catálogo único de preguntas y códigos ENAHO (web + API)
+│   ├── backend/                  # FastAPI: recepción y validación de respuestas (Etapa 1)
+│   ├── frontend/                 # React + Vite + Tailwind (portada, 5 pasos, revisión y comprobante)
+│   └── docker-compose.yml        # Despliegue en EC2: docker compose up -d --build
+│
 ├── Documentation/                # Sistema de documentación académica oficial
 │   ├── latex/                    # Master LaTeX (main.tex, main.pdf, references.bib)
 │   ├── sections/                 # Capítulos modulares del informe (01 a 11)

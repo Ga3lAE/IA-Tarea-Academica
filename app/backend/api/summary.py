@@ -70,8 +70,9 @@ def build_summary(data: Dict[str, Any]) -> List[SummaryBlock]:
         empleo += [
             SummaryItem(label="Horas a la semana", value=_count(data["jefe_horas_semanales"], "jefe_horas_semanales")),
             SummaryItem(label="Se desempeña como", value=_lbl("jefe_cat_ocupacional", data)),
-            SummaryItem(label="Registro del trabajo", value=_lbl("jefe_empresa_ruc", data)),
         ]
+        if data["jefe_cat_ocupacional"] != 6:
+            empleo.append(SummaryItem(label="Registro del trabajo", value=_lbl("jefe_empresa_ruc", data)))
     empleo += [
         SummaryItem(label="Pensiones", value=_lbl("jefe_sin_pension", data)),
         SummaryItem(label="Personas que trabajan", value=_count(data["n_ocupados"], "n_ocupados")),

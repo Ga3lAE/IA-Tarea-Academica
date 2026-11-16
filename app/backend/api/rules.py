@@ -20,6 +20,7 @@ CHOICE_FIELDS = (
     "jefe_sin_pension",
 )
 AGUA_CON_FRECUENCIA = {1, 2, 3}
+TRABAJADOR_DEL_HOGAR = 6
 
 Errors = List[Tuple[str, str]]
 
@@ -78,7 +79,11 @@ def validate_and_normalize(answers: SurveyAnswers) -> Tuple[Dict[str, Any], Erro
         errors.append(("educ_max_hogar", "En un hogar de una persona, el nivel más alto es el de la jefa o jefe."))
 
     # Regla 5: datos laborales del jefe solo si trabajó.
+    # Como en la ENAHO (P510A1), el registro del lugar de trabajo no se pregunta a trabajadores del hogar:
+    # el modelo los aprendió con código 0, igual que a los empleados públicos (opción "Entidad del Estado").
     if data["jefe_ocupado"] == 1:
+        if data["jefe_cat_ocupacional"] == TRABAJADOR_DEL_HOGAR:
+            data["jefe_empresa_ruc"] = 0
         for name, msg in (
             ("jefe_horas_semanales", "Indica las horas trabajadas la semana pasada."),
             ("jefe_cat_ocupacional", "Indica cómo se desempeña en su trabajo principal."),

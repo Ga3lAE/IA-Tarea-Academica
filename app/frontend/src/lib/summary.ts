@@ -56,7 +56,7 @@ export function summarizeStep(step: StepId, a: Answers): SummaryItem[] {
       if (a.jefe_ocupado === 1) {
         add("Horas", has(a.jefe_horas_semanales) && countLabel(a.jefe_horas_semanales!, "jefe_horas_semanales"));
         add("Se desempeña como", has(a.jefe_cat_ocupacional) && labelOf("jefe_cat_ocupacional", a.jefe_cat_ocupacional));
-        add("Registro", has(a.jefe_empresa_ruc) && labelOf("jefe_empresa_ruc", a.jefe_empresa_ruc));
+        add("Registro", a.jefe_cat_ocupacional !== 6 && has(a.jefe_empresa_ruc) && labelOf("jefe_empresa_ruc", a.jefe_empresa_ruc));
       }
       add("Pensiones", has(a.jefe_sin_pension) && labelOf("jefe_sin_pension", a.jefe_sin_pension));
       add("Trabajan", has(a.n_ocupados) && countLabel(a.n_ocupados!, "n_ocupados"));

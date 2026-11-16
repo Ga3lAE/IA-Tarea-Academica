@@ -274,9 +274,9 @@
     },
     "jefe_horas_semanales": {
       "type": "integer",
-      "label": "¿Cuántas horas trabajó en total la semana pasada?",
-      "help": "Suma las horas de todos sus trabajos.",
-      "min": 1,
+      "label": "¿Cuántas horas trabajó la semana pasada en su trabajo principal?",
+      "help": "Cuenta solo el trabajo principal. Si estuvo de vacaciones o con licencia, indica 0.",
+      "min": 0,
       "max": 100,
       "visible_if": { "jefe_ocupado": [1] },
       "unit": ["hora", "horas"]
@@ -298,12 +298,14 @@
     "jefe_empresa_ruc": {
       "type": "choice",
       "label": "El negocio o institución donde trabaja, ¿cómo está registrado?",
-      "help": "Si no lo sabes con certeza, elige la opción más cercana.",
+      "help": "Si no lo sabes con certeza, elige la opción más cercana. No se pregunta a trabajadores del hogar (como en la ENAHO).",
       "visible_if": { "jefe_ocupado": [1] },
+      "hidden_if": { "jefe_cat_ocupacional": [6] },
       "options": [
-        { "value": 1, "label": "Empresa o institución formal", "hint": "S.A., S.R.L., E.I.R.L. o sector público" },
+        { "value": 1, "label": "Empresa privada formal", "hint": "S.A., S.R.L., E.I.R.L. u otra persona jurídica" },
         { "value": 2, "label": "Persona natural con RUC", "hint": "Incluye RUS o RER" },
-        { "value": 3, "label": "Sin registro", "hint": "No tiene RUC" }
+        { "value": 3, "label": "Sin registro", "hint": "No tiene RUC" },
+        { "value": 0, "label": "Entidad del Estado", "hint": "Ministerio, municipalidad, Fuerzas Armadas, Policía u otra institución pública" }
       ]
     },
     "jefe_sin_pension": {

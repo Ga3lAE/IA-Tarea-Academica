@@ -108,6 +108,23 @@ def test_jefe_no_ocupado_normaliza_empleo():
     assert norm["jefe_horas_semanales"] is None and norm["jefe_cat_ocupacional"] is None
 
 
+def test_trabajador_del_hogar_sin_registro():
+    """Como en la ENAHO (P510A1), no se pregunta el RUC a trabajadores del hogar: se envía 0."""
+    r = post(jefe_cat_ocupacional=6, jefe_empresa_ruc=None)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["answers_normalized"]["jefe_empresa_ruc"] == 0
+    empleo = body["summary"][-1]["items"]
+    assert all(it["label"] != "Registro del trabajo" for it in empleo)
+
+
+def test_sector_publico_y_cero_horas():
+    """Empleados públicos usan el código 0 (sin P510A1) y un ocupado ausente puede tener 0 horas."""
+    r = post(jefe_empresa_ruc=0, jefe_horas_semanales=0)
+    assert r.status_code == 200, r.text
+    assert r.json()["answers_normalized"]["jefe_empresa_ruc"] == 0
+
+
 def test_errores_de_tipo_son_amigables():
     payload = {**PRINCIPAL, "n_miembros": "cuatro", "extra": 1}
     payload.pop("jefe_edad")

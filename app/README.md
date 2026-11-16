@@ -9,7 +9,7 @@ app/
 ├── shared/survey_catalog.json   ← catálogo único: preguntas, opciones y códigos ENAHO (lo leen la web y la API)
 ├── backend/                     ← FastAPI + Pydantic v2 (validación y reglas de salto)
 │   ├── api/  (main.py, rules.py, schemas.py, summary.py, catalog.py)
-│   └── tests/test_api.py        ← 22 pruebas (pytest)
+│   └── tests/test_api.py        ← 24 pruebas (pytest)
 ├── frontend/                    ← React 19 + Vite + TypeScript + Tailwind 4 (estilo "chai latte")
 │   └── nginx.conf               ← sirve la web y redirige /api al contenedor de la API
 └── docker-compose.yml           ← despliegue: 2 contenedores (api, web)

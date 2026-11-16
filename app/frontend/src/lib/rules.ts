@@ -38,6 +38,9 @@ export function maxOcupados(a: Answers): number {
   return Math.max(0, enEdad - (a.jefe_ocupado === 0 ? 1 : 0));
 }
 
+/** Como en la ENAHO (P510A1), el registro del lugar de trabajo no se pregunta a trabajadores del hogar (código 0). */
+export const asksWorkplaceRegistry = (a: Answers) => a.jefe_cat_ocupacional !== 6;
+
 export const higherEducationAvailable = (a: Answers) => a.educ_jefe !== undefined && a.educ_jefe < 11;
 
 /** Ajustes automáticos tras cada respuesta, para que la encuesta no permita estados incoherentes. */
@@ -129,11 +132,11 @@ export function stepErrors(step: StepId, a: Answers): FieldErrors {
       need("jefe_ocupado", "Elige una opción.");
       if (a.jefe_ocupado === 1) {
         need("jefe_horas_semanales", "Indica las horas trabajadas.");
-        if (a.jefe_horas_semanales !== undefined && (a.jefe_horas_semanales < 1 || a.jefe_horas_semanales > 100)) {
-          e.jefe_horas_semanales = "Ingresa entre 1 y 100 horas.";
+        if (a.jefe_horas_semanales !== undefined && (a.jefe_horas_semanales < 0 || a.jefe_horas_semanales > 100)) {
+          e.jefe_horas_semanales = "Ingresa entre 0 y 100 horas.";
         }
         need("jefe_cat_ocupacional", "Elige una opción.");
-        need("jefe_empresa_ruc", "Elige una opción.");
+        if (asksWorkplaceRegistry(a)) need("jefe_empresa_ruc", "Elige una opción.");
       }
       need("jefe_sin_pension", "Elige una opción.");
       if (!isSolo(a)) need("n_ocupados", "Indica cuántas personas trabajaron.");
@@ -172,7 +175,7 @@ export function toPayload(a: Answers): Record<string, unknown> {
     jefe_ocupado: a.jefe_ocupado,
     jefe_horas_semanales: ocupado ? a.jefe_horas_semanales : null,
     jefe_cat_ocupacional: ocupado ? a.jefe_cat_ocupacional : null,
-    jefe_empresa_ruc: ocupado ? a.jefe_empresa_ruc : null,
+    jefe_empresa_ruc: ocupado ? (asksWorkplaceRegistry(a) ? a.jefe_empresa_ruc : 0) : null,
     jefe_sin_pension: a.jefe_sin_pension,
     n_ocupados: isSolo(a) ? a.jefe_ocupado : a.n_ocupados,
   };
