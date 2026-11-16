@@ -53,3 +53,5 @@ dist/
 *.xdv
 *-eps-converted-to.pdf
 
+# Deployment
+app/*.pem
