@@ -100,7 +100,14 @@ Tarea Académica/
 ├── src/                          # Biblioteca modular de Python (KISS)
 │   ├── io_enaho.py               # Lectura de los 5 módulos ENAHO
 │   ├── dataset.py                # Integración relacional y purga de panel
-│   └── preprocessing.py          # Preprocesamiento anti-fuga y espacio R^28
+│   ├── preprocessing.py          # Preprocesamiento anti-fuga y espacio R^28 (cascada conglomerado->ubigeo->global)
+│   ├── models.py                 # Benchmark de 19 modelos, 30 corridas repetidas y selección ex-ante en 2024
+│   ├── evaluation.py             # Evaluación OOT 2025, Cluster Bootstrap H1-H4, TreeSHAP y equidad
+│   ├── inference.py              # Consolidación multi-año anti-overfitting y exportación .joblib
+│   └── encuesta_pobreza.py       # Ejecutable CLI de encuesta socioeconómica con TreeSHAP local
+│
+├── models/                       # Artefacto de producción serializado
+│   └── winner_bundle.joblib      # Stacking_Ensemble + HistGBDT explicador calibrados OOF (Python 3.12)
 │
 ├── notebooks/                    # Entorno analítico interactivo
 │   ├── pipeline_completo.ipynb   # Flujo end-to-end: ingesta, EDA, modelado y SHAP
@@ -123,12 +130,12 @@ Tarea Académica/
 
 ## 6. Instalación y Uso Rápido
 
-### Requisitos Previos
-Python 3.10 o superior:
+### Requisitos Previos (Entorno Reproducible Python 3.12 LTS)
 ```bash
-git clone <url-del-repositorio>
+git clone https://github.com/Ga3lAE/IA-Tarea-Academica.git
 cd "Tarea Académica"
-pip install -r requirements.txt
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ```
 
 ### Construir los Conjuntos de Entrenamiento y Prueba
@@ -138,19 +145,24 @@ from src.dataset import load_train_test_master
 # Cargar Train 2024 (4,090 hogares) y Test 2025 sin panel (3,199 hogares)
 df_train, df_test = load_train_test_master(data_root="Data")
 
-print(f"Train 2024: {df_train.shape} | Tasa de pobreza: {df_train['y'].mean():.2%}")
-print(f"Test 2025:  {df_test.shape}  | Tasa de pobreza: {df_test['y'].mean():.2%}")
+print(f"Train 2024: {df_train.shape} | Tasa de pobreza: {df_train['target_pobreza'].mean():.2%}")
+print(f"Test 2025:  {df_test.shape}  | Tasa de pobreza: {df_test['target_pobreza'].mean():.2%}")
 ```
 
-### Aplicar el Preprocesamiento Anti-Fuga ($\mathbb{R}^{28}$)
+### Aplicar el Preprocesamiento Anti-Fuga ($\mathbb{R}^{28}$) y Ejecutar la Encuesta CLI
 ```python
-from src.preprocessing import build_preprocessor, CANONICAL_FEATURES_28
+from src.preprocessing import prepare_xy_data, SecondaryHouseholdImputer, build_preprocessor
 
-preprocessor = build_preprocessor()
+# Extrae las 28 variables canónicas + conglomerado y ubigeo para la cascada espacial sin fuga
+X_train, y_train, groups_train = prepare_xy_data(df_train)
+cleaner = SecondaryHouseholdImputer()
+preprocessor = build_preprocessor(scale_numeric=True, scaler_type="robust")
 
-# Ajustar únicamente sobre train para evitar cualquier filtración de datos
-X_train = df_train[CANONICAL_FEATURES_28]
-X_train_trans = preprocessor.fit_transform(X_train)
-
+X_train_trans = preprocessor.fit_transform(cleaner.fit_transform(X_train))
 print(f"Matriz procesada de entrenamiento: {X_train_trans.shape}")
+```
+
+```bash
+# Evaluar los 3 perfiles de hogar de referencia desde terminal (con desglose TreeSHAP local):
+.venv/bin/python src/encuesta_pobreza.py --preset all
 ```

@@ -1,2 +1,32 @@
 \section{Implicancias éticas}
-\textit{[Sección a desarrollar en el Entregable Final, abordando equidad algorítmica, sesgo de exclusión y privacidad de los microdatos.]}
+
+La aplicación de clasificadores algorítmicos para asignar beneficios de protección social conlleva riesgos éticos directos sobre hogares vulnerables que exigen una auditoría desagregada antes de su despliegue. La Tabla~\ref{tab:equidad_subgrupos} presenta la auditoría de equidad ejecutada sobre el conjunto de prueba independiente ENAHO 2025 ($N=3{,}199$) tanto para el modelo ganador (\texttt{Stacking\_Ensemble}) como para el ensamble de árboles explicable (\texttt{LightGBM\_GBDT}).
+
+\begin{table}[htbp]
+\centering
+\caption{Auditoría de equidad por subgrupos vulnerables en ENAHO 2025 ($N=3{,}199$).}
+\label{tab:equidad_subgrupos}
+\fontsize{6.0}{7.4}\selectfont
+\setlength{\tabcolsep}{1.7pt}
+\begin{tabular}{llcccccc}
+\toprule
+\textbf{Modelo} & \textbf{Subgrupo} & $\boldsymbol{N}$ & \textbf{Pob.\%} & \textbf{PR-AUC} & \textbf{ROC} & \textbf{EE B20} & \textbf{Rec. $\boldsymbol{\tau}$} \\
+\midrule
+Stacking & Global Test 2025 & 3,199 & 17.41 & 0.5642 & 0.8593 & 0.4057 & 0.7110 \\
+Stacking & Jefatura: Mujer (1) & 1,316 & 17.55 & 0.5036 & 0.8293 & 0.4199 & 0.6970 \\
+Stacking & Jefatura: Hombre (0) & 1,883 & 17.31 & 0.6250 & 0.8801 & 0.3957 & 0.7209 \\
+Stacking & Secundario sin M01 (1) & 91 & \textbf{32.97} & 0.5208 & 0.6710 & \textbf{0.5667} & 0.5667 \\
+Stacking & Principal con M01 (0) & 3,108 & 16.96 & 0.5682 & 0.8645 & 0.3966 & 0.7192 \\
+Stacking & Jefe Sin Pensión (1) & 1,516 & 25.00 & 0.6189 & 0.8333 & 0.3193 & 0.7968 \\
+Stacking & Jefe Con Pensión (0) & 1,638 & 10.01 & 0.4077 & 0.8650 & 0.5976 & 0.5305 \\
+\midrule
+LightGBM & Global Test 2025 & 3,199 & 17.41 & 0.5587 & 0.8506 & 0.4093 & 0.7092 \\
+LightGBM & Jefatura: Mujer (1) & 1,316 & 17.55 & 0.5023 & 0.8258 & 0.4329 & 0.6970 \\
+LightGBM & Jefatura: Hombre (0) & 1,883 & 17.31 & 0.6117 & 0.8681 & 0.3926 & 0.7178 \\
+LightGBM & Secundario sin M01 (1) & 91 & \textbf{32.97} & 0.4922 & 0.6317 & \textbf{0.5333} & 0.5667 \\
+LightGBM & Principal con M01 (0) & 3,108 & 16.96 & 0.5652 & 0.8590 & 0.4023 & 0.7173 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El análisis empírico revela tres implicancias éticas fundamentales: (i) \textbf{Invisibilidad estadística de los hogares secundarios allegados}: los 91 hogares secundarios sin datos propios en el Módulo 01 sufren la tasa de pobreza real más alta de toda la muestra (\textbf{32.97\%} frente a \textbf{16.96\%} en hogares principales), pero son a la vez los peor predichos por los modelos ($\text{ROC-AUC}=0.6710$ vs.\ $0.8645$ en \texttt{Stacking\_Ensemble}, y $0.6317$ vs.\ $0.8590$ en \texttt{LightGBM\_GBDT}), elevando su error de exclusión en $B=20\%$ a $0.5667$ y reduciendo su exhaustividad con $\tau_{2024}$ a $0.5667$; aunque la cascada de imputación espacial (\texttt{CONGLOME}$\rightarrow$\texttt{UBIGEO}$\rightarrow$global) mitiga el sesgo frente a la mediana global, en la práctica administrativa resulta imperativo registrar la infraestructura de la vivienda compartida para no excluir a familias allegadas; (ii) \textbf{Brecha de desempeño por sexo de jefatura}: si bien los hogares con jefatura femenina ($N=1{,}316$) y masculina ($N=1{,}883$) presentan tasas de pobreza casi idénticas ($17.55\%$ vs.\ $17.31\%$), el modelo alcanza menor poder discriminativo en jefatura femenina ($\text{PR-AUC}=0.5036$ frente a $0.6250$ en \texttt{Stacking\_Ensemble}; $0.5023$ frente a $0.6117$ en \texttt{LightGBM\_GBDT}), con mayor error de exclusión ($0.4199$ vs.\ $0.3957$) e inclusión ($0.5331$ vs.\ $0.4419$), reflejando la mayor volatilidad de ingresos e intermitencia laboral asociada a responsabilidades de cuidado no remunerado; y (iii) \textbf{Gobernanza, privacidad y derecho a explicación}: el pipeline excluye estrictamente los códigos territoriales (\texttt{CONGLOME}, \texttt{UBIGEO}) como predictores para evitar estigmatización geográfica (\textit{redlining}) y acompaña cada predicción individual con su desglose exacto en log-odds mediante TreeSHAP, garantizando que ninguna clasificación automática reemplace la evaluación social humana ni el derecho de apelación ante el SISFOH.
