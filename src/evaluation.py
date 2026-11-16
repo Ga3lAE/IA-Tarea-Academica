@@ -215,10 +215,11 @@ def plot_ee_ie_curves(
         data=curves_df, x="Cobertura_B", y="EE", hue="Modelo",
         style="Modelo", markers=True, dashes=False, linewidth=2.0, ax=axes[0],
     )
-    axes[0].axvline(0.20, color="gray", linestyle="--", linewidth=1.2, label="Cobertura fija B=20%")
+    axes[0].axvline(0.20, color="gray", linestyle="--", linewidth=1.2)
     axes[0].set_title("A. Error de Exclusión vs. Cobertura Presupuestal (Test 2025)", fontweight="bold")
     axes[0].set_xlabel("Cobertura Presupuestal B (Fracción de Hogares Seleccionados)")
     axes[0].set_ylabel("Error de Exclusión (EE = FN / (TP + FN))")
+    axes[0].legend(title="Modelo", loc="upper right", fontsize=8.5, title_fontsize=9.0, framealpha=0.92)
 
     sns.lineplot(
         data=curves_df, x="IE", y="EE", hue="Modelo",
@@ -227,6 +228,7 @@ def plot_ee_ie_curves(
     axes[1].set_title("B. Frontera Trade-off Exclusión vs. Inclusión (B en [0.10, 0.40])", fontweight="bold")
     axes[1].set_xlabel("Error de Inclusión (IE = FP / (TP + FP))")
     axes[1].set_ylabel("Error de Exclusión (EE)")
+    axes[1].legend(title="Modelo", loc="lower left", fontsize=8.5, title_fontsize=9.0, framealpha=0.92)
 
     plt.tight_layout()
     if save_path is not None:
@@ -766,7 +768,7 @@ def audit_subgroup_fairness_2025(
     df_2025_test: pd.DataFrame,
     probs_2025: Dict[str, np.ndarray],
     fitted_artifacts: Dict[str, Dict[str, Any]],
-    model_name: str = "LightGBM_GBDT",
+    model_name: str = "Stacking_Ensemble",
 ) -> pd.DataFrame:
     """
     Evalúa si el modelo elegido presenta sesgos de exclusión o inclusión dispares
@@ -809,6 +811,7 @@ def audit_subgroup_fairness_2025(
         fn_b = int((~sel_sub & pob).sum())
 
         rows.append({
+            "Modelo": model_name,
             "Subgrupo": label,
             "N_Hogares": int(m.sum()),
             "Pobreza_Real_%": round(float(y_sub.mean()) * 100.0, 2),
@@ -864,6 +867,7 @@ if __name__ == "__main__":
     print(shap_res["block_importance"].to_string(index=False))
 
     # 6. Auditoría de equidad por subgrupos (Implicancias Éticas)
-    print("\n4. Auditoría de Equidad por Subgrupos en Test 2025 (LightGBM_GBDT):")
-    fair_df = audit_subgroup_fairness_2025(df_2025_test, probs_2025, artifacts_2024, model_name="LightGBM_GBDT")
-    print(fair_df.to_string(index=False))
+    print("\n4. Auditoría de Equidad por Subgrupos en Test 2025 (Stacking_Ensemble y LightGBM_GBDT):")
+    fair_stack_df = audit_subgroup_fairness_2025(df_2025_test, probs_2025, artifacts_2024, model_name="Stacking_Ensemble")
+    fair_lgb_df = audit_subgroup_fairness_2025(df_2025_test, probs_2025, artifacts_2024, model_name="LightGBM_GBDT")
+    print(pd.concat([fair_stack_df, fair_lgb_df], ignore_index=True).to_string(index=False))

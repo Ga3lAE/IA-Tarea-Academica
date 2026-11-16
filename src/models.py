@@ -327,7 +327,7 @@ def compare_scalers_cv(
     for sc_type in ("robust", "standard", "minmax"):
         for model_label, est in [
             ("Logística ElasticNet", LogisticRegression(
-                penalty="elasticnet", solver="saga", l1_ratio=0.5, C=0.2,
+                solver="saga", l1_ratio=0.5, C=0.2,
                 class_weight=w_bal, max_iter=1500, random_state=42
             )),
             ("MLP Red Neuronal", MLPClassifier(
@@ -395,7 +395,7 @@ def _make_gbdt_estimator(
 
 def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
     """
-    Define el registro completo de las 78 configuraciones candidatas de las 16 familias/modelos.
+    Define el registro completo de las 99 configuraciones candidatas de los 19 modelos (8 familias).
     Cada candidato especifica su `view_key` ('robust_28', 'tree_28', 'viv_robust_11', 'viv_tree_11')
     y su `estimator` con `n_jobs=1` para permitir paralelismo multiproceso externo sin contención.
     """
@@ -427,7 +427,7 @@ def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
     # 1. Baselines de Representación Solo Vivienda (M01, 11 vars) -> H1
     for a in alphas:
         est = LogisticRegression(
-            penalty="elasticnet", solver="saga", C=0.5, l1_ratio=0.5,
+            solver="saga", C=0.5, l1_ratio=0.5,
             class_weight={0: 1.0, 1: a}, max_iter=1500, random_state=42
         )
         _add("Logistica_Solo_Vivienda", "01_Baseline_Vivienda (H1)", f"C=0.5, l1=0.5, alpha={a:.2f}",
@@ -440,7 +440,7 @@ def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
     _add("RF_Solo_Vivienda", "01_Baseline_Vivienda (H1)", f"n=300, max_depth=8, min_leaf=15, alpha={gamma:.2f}",
          round(gamma, 4), False, VIVIENDA_FEATURES_12, "viv_tree_11", est_rf_viv, False, "none")
 
-    # 2. Familia Econométrica PMT Continua (ln(gasto) en R^28)
+    # 2. Familia Econométrica PMT Continua (ln(gasto) en R^28, regresión lineal regularizada Ridge)
     for ridge_a in [1e-4, 1.0, 10.0]:
         _add("PMT_MCO", "02_Econometrico_PMT", f"OLS/Ridge(alpha={ridge_a}) sobre ln(gasto)",
              1.0, True, CANONICAL_FEATURES_28, "robust_28", Ridge(alpha=ridge_a, random_state=42), True, "robust")
@@ -454,7 +454,7 @@ def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
         for c_val in [0.05, 0.2, 1.0]:
             for l1_val in [0.0, 0.5, 1.0]:
                 est = LogisticRegression(
-                    penalty="elasticnet", solver="saga", C=c_val, l1_ratio=l1_val,
+                    solver="saga", C=c_val, l1_ratio=l1_val,
                     class_weight={0: 1.0, 1: a}, max_iter=1500, random_state=42
                 )
                 _add("Logistica_ElasticNet", "03_Lineal_Regularizado",
@@ -603,7 +603,7 @@ def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
     # 7. Meta-Ensamble (Stacking Multifamilia)
     stack_est = StackingClassifier(
         estimators=[
-            ("lr", LogisticRegression(penalty="elasticnet", solver="saga", C=0.2, l1_ratio=0.5, max_iter=1200, random_state=42)),
+            ("lr", LogisticRegression(solver="saga", C=0.2, l1_ratio=0.5, max_iter=1200, random_state=42)),
             ("rf", RandomForestClassifier(n_estimators=300, max_depth=10, min_samples_leaf=15, n_jobs=1, random_state=42)),
             ("et", ExtraTreesClassifier(n_estimators=300, max_depth=12, min_samples_leaf=15, n_jobs=1, random_state=42)),
             ("gb", _make_gbdt_estimator(alpha_weight=1.0, learning_rate=0.03, num_leaves=15, min_child=30, n_jobs=1)),
@@ -719,7 +719,7 @@ def run_spatial_cv_benchmark(
         if (name not in best_by_name) or (res["metrics_cv"]["PR_AUC"] > best_by_name[name]["metrics_cv"]["PR_AUC"]):
             best_by_name[name] = res
 
-    # Reentrenar en paralelo los 16 modelos ganadores sobre el 100% de ENAHO 2024
+    # Reentrenar en paralelo los 19 modelos ganadores sobre el 100% de ENAHO 2024
     def _fit_winner(name: str, info: Dict[str, Any]):
         cand = info["cand"]
         X_in = X_viv if len(cand["features"]) == len(VIVIENDA_FEATURES_12) else X_full
@@ -824,7 +824,7 @@ def _evaluate_one_split_all_models(
     """
     Worker paralelo para un pliegue espacial `(rep, run_id)`:
     1. Calcula una sola vez las 4 vistas preprocesadas del pliegue.
-    2. Entrena y evalúa los 16 modelos ganadores sobre esas vistas.
+    2. Entrena y evalúa los 19 modelos ganadores sobre esas vistas.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -878,7 +878,7 @@ def run_repeated_spatial_cv(
     unique_groups = np.unique(grp_arr)
     rng = np.random.default_rng(random_state)
 
-    # Extraer especificaciones ligeras de los 16 modelos ganadores
+    # Extraer especificaciones ligeras de los 19 modelos ganadores
     model_specs = []
     for name, art in fitted_artifacts.items():
         est = art.get("estimator", art["pipe"].named_steps["model"])
@@ -1135,10 +1135,10 @@ if __name__ == "__main__":
     scaler_df = compare_scalers_cv(df_2024)
     print(scaler_df.to_string(index=False))
 
-    print("\n2. Benchmark Completo de las 78 Configuraciones / 16 Modelos en GroupKFold(5):")
+    print("\n2. Benchmark Completo de las 99 Configuraciones / 19 Modelos en GroupKFold(5):")
     best_df, all_df, artifacts = run_spatial_cv_benchmark(df_2024)
 
-    print("\n3. Validación Cruzada Espacial Repetida (30 Corridas x 16 Modelos = 480 Evaluaciones):")
+    print("\n3. Validación Cruzada Espacial Repetida (30 Corridas x 19 Modelos = 570 Evaluaciones):")
     rep_df = run_repeated_spatial_cv(artifacts, df_2024, n_splits=5, n_repeats=6)
     rank_df = rank_models_by_folds(rep_df, best_df)
     cols = [
