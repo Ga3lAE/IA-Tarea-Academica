@@ -176,6 +176,8 @@ def compute_ee_ie_curves(
                 "Stacking_Ensemble",
                 "Logistica_ElasticNet",
                 "LightGBM_GBDT",
+                "XGBoost_GBDT",
+                "CatBoost_GBDT",
                 "Random_Forest",
                 "PMT_MCO",
                 "CART_Podado",
@@ -213,10 +215,11 @@ def plot_ee_ie_curves(
         data=curves_df, x="Cobertura_B", y="EE", hue="Modelo",
         style="Modelo", markers=True, dashes=False, linewidth=2.0, ax=axes[0],
     )
-    axes[0].axvline(0.20, color="gray", linestyle="--", linewidth=1.2, label="Cobertura fija B=20%")
+    axes[0].axvline(0.20, color="gray", linestyle="--", linewidth=1.2)
     axes[0].set_title("A. Error de Exclusión vs. Cobertura Presupuestal (Test 2025)", fontweight="bold")
     axes[0].set_xlabel("Cobertura Presupuestal B (Fracción de Hogares Seleccionados)")
     axes[0].set_ylabel("Error de Exclusión (EE = FN / (TP + FN))")
+    axes[0].legend(title="Modelo", loc="upper right", fontsize=8.5, title_fontsize=9.0, framealpha=0.92)
 
     sns.lineplot(
         data=curves_df, x="IE", y="EE", hue="Modelo",
@@ -225,6 +228,7 @@ def plot_ee_ie_curves(
     axes[1].set_title("B. Frontera Trade-off Exclusión vs. Inclusión (B en [0.10, 0.40])", fontweight="bold")
     axes[1].set_xlabel("Error de Inclusión (IE = FP / (TP + FP))")
     axes[1].set_ylabel("Error de Exclusión (EE)")
+    axes[1].legend(title="Modelo", loc="lower left", fontsize=8.5, title_fontsize=9.0, framealpha=0.92)
 
     plt.tight_layout()
     if save_path is not None:
@@ -293,6 +297,8 @@ def run_cluster_bootstrap_hypotheses(
         ("Logistica_ElasticNet", "Logistica_Solo_Vivienda"),
         ("Random_Forest", "RF_Solo_Vivienda"),
         ("LightGBM_GBDT", "RF_Solo_Vivienda"),
+        ("XGBoost_GBDT", "RF_Solo_Vivienda"),
+        ("CatBoost_GBDT", "RF_Solo_Vivienda"),
         ("Stacking_Ensemble", "Logistica_Solo_Vivienda"),
     ]
     for m_full, m_viv in h1_pairs:
@@ -321,6 +327,10 @@ def run_cluster_bootstrap_hypotheses(
     h2_pairs = [
         ("LightGBM_GBDT", "Logistica_ElasticNet"),
         ("LightGBM_GBDT", "PMT_MCO"),
+        ("XGBoost_GBDT", "Logistica_ElasticNet"),
+        ("XGBoost_GBDT", "PMT_MCO"),
+        ("CatBoost_GBDT", "Logistica_ElasticNet"),
+        ("CatBoost_GBDT", "PMT_MCO"),
         ("Random_Forest", "Logistica_ElasticNet"),
         ("Random_Forest", "PMT_MCO"),
         ("Stacking_Ensemble", "Logistica_ElasticNet"),
@@ -353,7 +363,16 @@ def run_cluster_bootstrap_hypotheses(
     # -------------------------------------------------------------------------
     # H3: Punto Operativo en 2025 con tau congelado de 2024 (Rec>=0.70, Prec>=0.40)
     # -------------------------------------------------------------------------
-    for m_name in ["Stacking_Ensemble", "Logistica_ElasticNet", "LightGBM_GBDT", "Random_Forest", "PMT_MCO"]:
+    core_models_h3_h4 = [
+        "Stacking_Ensemble",
+        "Logistica_ElasticNet",
+        "LightGBM_GBDT",
+        "XGBoost_GBDT",
+        "CatBoost_GBDT",
+        "Random_Forest",
+        "PMT_MCO",
+    ]
+    for m_name in core_models_h3_h4:
         if m_name in probs_2025:
             tau = float(fitted_artifacts[m_name]["metrics_cv"]["Tau_Rec70"])
             pred = (probs_2025[m_name] >= tau).astype(int)
@@ -372,8 +391,8 @@ def run_cluster_bootstrap_hypotheses(
                 "Media_Bootstrap": r_mean,
                 "IC95_Inf": r_lo,
                 "IC95_Sup": r_hi,
-                "Criterio_Meta": "Recall >= 0.70",
-                "Resultado": "CORROBORADA" if rec_obs >= 0.70 else "NO CORROBORADA",
+                "Criterio_Meta": "Recall >= 0.70 (IC95_Inf >= 0.70)",
+                "Resultado": "CORROBORADA" if r_lo >= 0.70 else ("CORROBORADA PUNTO (IC < 0.70)" if rec_obs >= 0.70 else "NO CORROBORADA"),
             })
             rows.append({
                 "Hipotesis": "H3 (Precisión >= 0.40 con tau_2024)",
@@ -382,14 +401,14 @@ def run_cluster_bootstrap_hypotheses(
                 "Media_Bootstrap": p_mean,
                 "IC95_Inf": p_lo,
                 "IC95_Sup": p_hi,
-                "Criterio_Meta": "Precisión >= 0.40",
-                "Resultado": "CORROBORADA" if prec_obs >= 0.40 else "NO CORROBORADA",
+                "Criterio_Meta": "Precisión >= 0.40 (IC95_Inf >= 0.40)",
+                "Resultado": "CORROBORADA" if p_lo >= 0.40 else ("CORROBORADA PUNTO (IC < 0.40)" if prec_obs >= 0.40 else "NO CORROBORADA"),
             })
 
     # -------------------------------------------------------------------------
     # H4: Degradación temporal PR-AUC (CV 2024 -> Test 2025) <= 0.05
     # -------------------------------------------------------------------------
-    for m_name in ["Stacking_Ensemble", "Logistica_ElasticNet", "LightGBM_GBDT", "Random_Forest", "PMT_MCO"]:
+    for m_name in core_models_h3_h4:
         if m_name in probs_2025:
             oof_24 = fitted_artifacts[m_name]["oof_probs"]
             p_25 = probs_2025[m_name]
@@ -418,18 +437,19 @@ def run_cluster_bootstrap_hypotheses(
 # =============================================================================
 
 _BLOCK_MAP: Dict[str, str] = {}
-for _c in ["total_habitaciones", "total_dormitorios", "tipo_vivienda", "material_pared",
-           "material_piso", "tenencia_vivienda", "fuente_agua", "agua_todos_los_dias",
-           "conexion_bano", "combustible_cocina", "tiene_internet"]:
-    _BLOCK_MAP[_c] = "Vivienda (M01)"
+for _c in ["total_habitaciones", "total_dormitorios", "personas_por_hab",
+           "tipo_vivienda", "material_pared", "material_piso", "tenencia_vivienda",
+           "fuente_agua", "agua_todos_los_dias", "conexion_bano",
+           "combustible_cocina", "tiene_internet"]:
+    _BLOCK_MAP[_c] = "Vivienda y Hacinamiento (M01/Φ)"
 for _c in ["n_miembros", "n_ninos_0_5", "n_menores_14", "n_mayores_65",
            "tasa_dependencia", "jefe_edad", "jefe_mujer"]:
     _BLOCK_MAP[_c] = "Demografía (M02)"
 for _c in ["educ_jefe", "educ_max_hogar"]:
     _BLOCK_MAP[_c] = "Educación (M03)"
-for _c in ["n_ocupados", "ocupados_por_miembro", "personas_por_hab", "jefe_horas_semanales",
+for _c in ["n_ocupados", "ocupados_por_miembro", "jefe_horas_semanales",
            "jefe_ocupado", "jefe_cat_ocupacional", "jefe_empresa_ruc", "jefe_sin_pension"]:
-    _BLOCK_MAP[_c] = "Empleo y Ratios (M05/Φ)"
+    _BLOCK_MAP[_c] = "Empleo y Formalidad (M05/Φ)"
 
 
 def _map_encoded_name_to_original(enc_name: str) -> str:
@@ -684,7 +704,7 @@ def compute_treeshap_analysis(
                 X_mat,
                 feature_names=clean_feat_names,
                 max_display=15,
-                title="TreePath Global (Test OOT 2025) — Top 15 Atributos Predictivos",
+                title="TreeSHAP Global (Test OOT 2025) — Top 15 Atributos Predictivos",
             )
         if save_dir is not None:
             try:
@@ -748,7 +768,7 @@ def audit_subgroup_fairness_2025(
     df_2025_test: pd.DataFrame,
     probs_2025: Dict[str, np.ndarray],
     fitted_artifacts: Dict[str, Dict[str, Any]],
-    model_name: str = "LightGBM_GBDT",
+    model_name: str = "Stacking_Ensemble",
 ) -> pd.DataFrame:
     """
     Evalúa si el modelo elegido presenta sesgos de exclusión o inclusión dispares
@@ -791,6 +811,7 @@ def audit_subgroup_fairness_2025(
         fn_b = int((~sel_sub & pob).sum())
 
         rows.append({
+            "Modelo": model_name,
             "Subgrupo": label,
             "N_Hogares": int(m.sum()),
             "Pobreza_Real_%": round(float(y_sub.mean()) * 100.0, 2),
@@ -846,6 +867,7 @@ if __name__ == "__main__":
     print(shap_res["block_importance"].to_string(index=False))
 
     # 6. Auditoría de equidad por subgrupos (Implicancias Éticas)
-    print("\n4. Auditoría de Equidad por Subgrupos en Test 2025 (LightGBM_GBDT):")
-    fair_df = audit_subgroup_fairness_2025(df_2025_test, probs_2025, artifacts_2024, model_name="LightGBM_GBDT")
-    print(fair_df.to_string(index=False))
+    print("\n4. Auditoría de Equidad por Subgrupos en Test 2025 (Stacking_Ensemble y LightGBM_GBDT):")
+    fair_stack_df = audit_subgroup_fairness_2025(df_2025_test, probs_2025, artifacts_2024, model_name="Stacking_Ensemble")
+    fair_lgb_df = audit_subgroup_fairness_2025(df_2025_test, probs_2025, artifacts_2024, model_name="LightGBM_GBDT")
+    print(pd.concat([fair_stack_df, fair_lgb_df], ignore_index=True).to_string(index=False))

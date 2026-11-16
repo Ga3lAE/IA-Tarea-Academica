@@ -72,6 +72,20 @@ except Exception:
     LGBMClassifier = None
     HAS_LIGHTGBM = False
 
+try:
+    from xgboost import XGBClassifier
+    HAS_XGBOOST = True
+except Exception:
+    XGBClassifier = None
+    HAS_XGBOOST = False
+
+try:
+    from catboost import CatBoostClassifier
+    HAS_CATBOOST = True
+except Exception:
+    CatBoostClassifier = None
+    HAS_CATBOOST = False
+
 
 # =============================================================================
 # MÉTRICAS OPERATIVAS DE FOCALIZACIÓN SOCIAL (A COBERTURA FIJA Y UMBRAL)
@@ -313,7 +327,7 @@ def compare_scalers_cv(
     for sc_type in ("robust", "standard", "minmax"):
         for model_label, est in [
             ("Logística ElasticNet", LogisticRegression(
-                penalty="elasticnet", solver="saga", l1_ratio=0.5, C=0.2,
+                solver="saga", l1_ratio=0.5, C=0.2,
                 class_weight=w_bal, max_iter=1500, random_state=42
             )),
             ("MLP Red Neuronal", MLPClassifier(
@@ -381,7 +395,7 @@ def _make_gbdt_estimator(
 
 def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
     """
-    Define el registro completo de las 78 configuraciones candidatas de las 16 familias/modelos.
+    Define el registro completo de las 99 configuraciones candidatas de los 19 modelos (8 familias).
     Cada candidato especifica su `view_key` ('robust_28', 'tree_28', 'viv_robust_11', 'viv_tree_11')
     y su `estimator` con `n_jobs=1` para permitir paralelismo multiproceso externo sin contención.
     """
@@ -413,7 +427,7 @@ def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
     # 1. Baselines de Representación Solo Vivienda (M01, 11 vars) -> H1
     for a in alphas:
         est = LogisticRegression(
-            penalty="elasticnet", solver="saga", C=0.5, l1_ratio=0.5,
+            solver="saga", C=0.5, l1_ratio=0.5,
             class_weight={0: 1.0, 1: a}, max_iter=1500, random_state=42
         )
         _add("Logistica_Solo_Vivienda", "01_Baseline_Vivienda (H1)", f"C=0.5, l1=0.5, alpha={a:.2f}",
@@ -426,7 +440,7 @@ def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
     _add("RF_Solo_Vivienda", "01_Baseline_Vivienda (H1)", f"n=300, max_depth=8, min_leaf=15, alpha={gamma:.2f}",
          round(gamma, 4), False, VIVIENDA_FEATURES_12, "viv_tree_11", est_rf_viv, False, "none")
 
-    # 2. Familia Econométrica PMT Continua (ln(gasto) en R^28)
+    # 2. Familia Econométrica PMT Continua (ln(gasto) en R^28, regresión lineal regularizada Ridge)
     for ridge_a in [1e-4, 1.0, 10.0]:
         _add("PMT_MCO", "02_Econometrico_PMT", f"OLS/Ridge(alpha={ridge_a}) sobre ln(gasto)",
              1.0, True, CANONICAL_FEATURES_28, "robust_28", Ridge(alpha=ridge_a, random_state=42), True, "robust")
@@ -440,7 +454,7 @@ def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
         for c_val in [0.05, 0.2, 1.0]:
             for l1_val in [0.0, 0.5, 1.0]:
                 est = LogisticRegression(
-                    penalty="elasticnet", solver="saga", C=c_val, l1_ratio=l1_val,
+                    solver="saga", C=c_val, l1_ratio=l1_val,
                     class_weight={0: 1.0, 1: a}, max_iter=1500, random_state=42
                 )
                 _add("Logistica_ElasticNet", "03_Lineal_Regularizado",
@@ -486,15 +500,81 @@ def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
              f"n=400, max_depth=12, min_leaf=10, alpha={a:.2f}",
              a, False, CANONICAL_FEATURES_28, "tree_28", est, False, "none")
 
-    # 5. Familia Gradient Boosting (R^28, sin escalado)
-    gbdt_engine = "LightGBM" if HAS_LIGHTGBM else "HistGBDT_LeafWise"
+    # 5. Familia Gradient Boosting (R^28, sin escalado, algoritmos explícitos separados sin enmascarar)
+    if HAS_LIGHTGBM:
+        for a in alphas:
+            for lr in [0.03, 0.05]:
+                for leaves in [15, 25]:
+                    est = LGBMClassifier(
+                        n_estimators=250,
+                        learning_rate=lr,
+                        num_leaves=leaves,
+                        min_child_samples=30,
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        reg_alpha=1.0,
+                        reg_lambda=1.0,
+                        scale_pos_weight=a,
+                        random_state=42,
+                        n_jobs=1,
+                        verbose=-1,
+                    )
+                    _add("LightGBM_GBDT", "06_Ensamble_Boosting",
+                         f"LightGBM(lr={lr}, leaves={leaves}, alpha={a:.2f})",
+                         a, False, CANONICAL_FEATURES_28, "tree_28", est, False, "none")
+
+    if HAS_XGBOOST:
+        for a in alphas:
+            for md, lr in [(3, 0.05), (4, 0.03), (5, 0.03)]:
+                est_xgb = XGBClassifier(
+                    n_estimators=250,
+                    max_depth=md,
+                    learning_rate=lr,
+                    subsample=0.8,
+                    colsample_bytree=0.8,
+                    reg_alpha=1.0,
+                    reg_lambda=5.0,
+                    scale_pos_weight=a,
+                    eval_metric="logloss",
+                    random_state=42,
+                    n_jobs=1,
+                )
+                _add("XGBoost_GBDT", "06_Ensamble_Boosting",
+                     f"XGBoost(depth={md}, lr={lr}, alpha={a:.2f})",
+                     a, False, CANONICAL_FEATURES_28, "tree_28", est_xgb, False, "none")
+
+    if HAS_CATBOOST:
+        for a in alphas:
+            for md, lr in [(4, 0.05), (6, 0.03)]:
+                est_cat = CatBoostClassifier(
+                    iterations=250,
+                    depth=md,
+                    learning_rate=lr,
+                    l2_leaf_reg=5.0,
+                    scale_pos_weight=float(a),
+                    random_seed=42,
+                    thread_count=1,
+                    verbose=0,
+                    allow_writing_files=False,
+                )
+                _add("CatBoost_GBDT", "06_Ensamble_Boosting",
+                     f"CatBoost(depth={md}, lr={lr}, alpha={a:.2f})",
+                     a, False, CANONICAL_FEATURES_28, "tree_28", est_cat, False, "none")
+
     for a in alphas:
-        for lr in [0.03, 0.05]:
-            for leaves in [15, 25]:
-                est = _make_gbdt_estimator(alpha_weight=a, learning_rate=lr, num_leaves=leaves, min_child=30, n_jobs=1)
-                _add("LightGBM_GBDT", "06_Ensamble_Boosting",
-                     f"{gbdt_engine}(lr={lr}, leaves={leaves}, alpha={a:.2f})",
-                     a, False, CANONICAL_FEATURES_28, "tree_28", est, False, "none")
+        for lr, leaves in [(0.03, 15), (0.05, 25)]:
+            est_hgb = HistGradientBoostingClassifier(
+                max_iter=250,
+                learning_rate=lr,
+                max_leaf_nodes=leaves,
+                min_samples_leaf=30,
+                l2_regularization=1.0,
+                class_weight={0: 1.0, 1: a},
+                random_state=42,
+            )
+            _add("HistGBDT_Sklearn", "06_Ensamble_Boosting",
+                 f"HistGBDT(lr={lr}, leaves={leaves}, alpha={a:.2f})",
+                 a, False, CANONICAL_FEATURES_28, "tree_28", est_hgb, False, "none")
 
     est_ada = AdaBoostClassifier(
         estimator=DecisionTreeClassifier(max_depth=2, min_samples_leaf=20, random_state=42),
@@ -523,7 +603,7 @@ def build_candidate_registry(gamma: float) -> List[Dict[str, Any]]:
     # 7. Meta-Ensamble (Stacking Multifamilia)
     stack_est = StackingClassifier(
         estimators=[
-            ("lr", LogisticRegression(penalty="elasticnet", solver="saga", C=0.2, l1_ratio=0.5, max_iter=1200, random_state=42)),
+            ("lr", LogisticRegression(solver="saga", C=0.2, l1_ratio=0.5, max_iter=1200, random_state=42)),
             ("rf", RandomForestClassifier(n_estimators=300, max_depth=10, min_samples_leaf=15, n_jobs=1, random_state=42)),
             ("et", ExtraTreesClassifier(n_estimators=300, max_depth=12, min_samples_leaf=15, n_jobs=1, random_state=42)),
             ("gb", _make_gbdt_estimator(alpha_weight=1.0, learning_rate=0.03, num_leaves=15, min_child=30, n_jobs=1)),
@@ -639,7 +719,7 @@ def run_spatial_cv_benchmark(
         if (name not in best_by_name) or (res["metrics_cv"]["PR_AUC"] > best_by_name[name]["metrics_cv"]["PR_AUC"]):
             best_by_name[name] = res
 
-    # Reentrenar en paralelo los 16 modelos ganadores sobre el 100% de ENAHO 2024
+    # Reentrenar en paralelo los 19 modelos ganadores sobre el 100% de ENAHO 2024
     def _fit_winner(name: str, info: Dict[str, Any]):
         cand = info["cand"]
         X_in = X_viv if len(cand["features"]) == len(VIVIENDA_FEATURES_12) else X_full
@@ -744,7 +824,7 @@ def _evaluate_one_split_all_models(
     """
     Worker paralelo para un pliegue espacial `(rep, run_id)`:
     1. Calcula una sola vez las 4 vistas preprocesadas del pliegue.
-    2. Entrena y evalúa los 16 modelos ganadores sobre esas vistas.
+    2. Entrena y evalúa los 19 modelos ganadores sobre esas vistas.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -798,7 +878,7 @@ def run_repeated_spatial_cv(
     unique_groups = np.unique(grp_arr)
     rng = np.random.default_rng(random_state)
 
-    # Extraer especificaciones ligeras de los 16 modelos ganadores
+    # Extraer especificaciones ligeras de los 19 modelos ganadores
     model_specs = []
     for name, art in fitted_artifacts.items():
         est = art.get("estimator", art["pipe"].named_steps["model"])
@@ -900,13 +980,52 @@ def rank_models_by_folds(
     return merged
 
 
+def select_winner_from_cv_2024(
+    ranking_cv_df: pd.DataFrame,
+    best_models_df: pd.DataFrame,
+) -> Dict[str, Any]:
+    """
+    Regla formal de selección ex-ante usando EXCLUSIVAMENTE la validación cruzada en ENAHO 2024
+    (Opción 1B: Validación Cruzada Espacial Repetida de 30 corridas = 6 repeticiones x 5 pliegues
+    sobre los 704 conglomerados censales de 2024, antes de evaluar el conjunto de prueba OOT 2025).
+
+    Criterio lexicográfico pre-especificado sobre las 30 corridas en 2024:
+    1. Mayor mediana de PR-AUC (`PR_AUC_Mediana`).
+    2. Menor rango promedio por corrida (`Rank_Medio_PR`, test de Friedman).
+    3. Menor mediana de Error de Exclusión a B=20% (`EE_B20_Mediana`).
+    """
+    ordered = ranking_cv_df.sort_values(
+        by=["PR_AUC_Mediana", "Rank_Medio_PR", "EE_B20_Mediana"],
+        ascending=[False, True, True],
+    ).reset_index(drop=True)
+
+    winner_row = ordered.iloc[0]
+    runner_up_row = ordered.iloc[1] if len(ordered) > 1 else ordered.iloc[0]
+    single_cv_top = best_models_df.sort_values(by="PR_AUC_OOF", ascending=False).iloc[0]
+
+    return {
+        "winner_name": str(winner_row["Modelo"]),
+        "winner_family": str(winner_row["Familia"]),
+        "selection_rule": "Repeated_Spatial_CV_30runs_2024 (PR_AUC_Mediana + Rank_Medio_PR + EE_B20_Mediana)",
+        "pr_auc_mediana_2024": float(winner_row["PR_AUC_Mediana"]),
+        "pr_auc_mean_runs_2024": float(winner_row["PR_AUC_Mean_Runs"]),
+        "rank_medio_pr_2024": float(winner_row["Rank_Medio_PR"]),
+        "ee_b20_mediana_2024": float(winner_row["EE_B20_Mediana"]),
+        "pr_auc_oof_5fold_2024": float(winner_row["PR_AUC_OOF"]),
+        "runner_up_30runs": str(runner_up_row["Modelo"]),
+        "single_5fold_top1": str(single_cv_top["Modelo"]),
+        "single_5fold_top1_pr_auc": float(single_cv_top["PR_AUC_OOF"]),
+        "ordered_ranking_df": ordered,
+    }
+
+
 def plot_cv_boxplots(
     folds_df: pd.DataFrame,
     save_path: Optional[Path] = None,
     show: bool = True,
 ):
     """
-    Genera la figura de Boxplots comparativos de los 16 modelos sobre las corridas
+    Genera la figura de Boxplots comparativos de todos los modelos evaluados sobre las corridas
     de GroupKFold (Panel A: PR-AUC por pliegue; Panel B: Error de Exclusión EE a B=20%).
     """
     import matplotlib.pyplot as plt
@@ -920,7 +1039,7 @@ def plot_cv_boxplots(
     )
 
     sns.set_theme(style="whitegrid")
-    fig, axes = plt.subplots(1, 2, figsize=(15, 6.8), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(15, 7.6), sharey=True)
 
     sns.boxplot(
         data=folds_df,
@@ -979,8 +1098,9 @@ def plot_cv_boxplots(
     axes[1].set_ylabel("")
 
     n_runs = folds_df["Fold"].nunique()
+    n_models = folds_df["Modelo"].nunique()
     plt.suptitle(
-        f"Comparación de 16 Modelos mediante Boxplots de Validación Cruzada Espacial ({n_runs} Corridas en ENAHO 2024)",
+        f"Comparación de {n_models} Modelos mediante Boxplots de Validación Cruzada Espacial ({n_runs} Corridas en ENAHO 2024)",
         fontweight="bold",
         fontsize=13,
         y=1.01,
@@ -1015,10 +1135,10 @@ if __name__ == "__main__":
     scaler_df = compare_scalers_cv(df_2024)
     print(scaler_df.to_string(index=False))
 
-    print("\n2. Benchmark Completo de las 78 Configuraciones / 16 Modelos en GroupKFold(5):")
+    print("\n2. Benchmark Completo de las 99 Configuraciones / 19 Modelos en GroupKFold(5):")
     best_df, all_df, artifacts = run_spatial_cv_benchmark(df_2024)
 
-    print("\n3. Validación Cruzada Espacial Repetida (30 Corridas x 16 Modelos = 480 Evaluaciones):")
+    print("\n3. Validación Cruzada Espacial Repetida (30 Corridas x 19 Modelos = 570 Evaluaciones):")
     rep_df = run_repeated_spatial_cv(artifacts, df_2024, n_splits=5, n_repeats=6)
     rank_df = rank_models_by_folds(rep_df, best_df)
     cols = [

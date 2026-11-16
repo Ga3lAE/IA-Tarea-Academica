@@ -40,6 +40,7 @@ from src.dataset import KEY_HOGAR, build_combined_dataset
 from src.evaluation import _histgb_tree_contribs, _map_encoded_name_to_original
 from src.models import compute_targeting_metrics
 from src.preprocessing import (
+    AUX_GROUP_COL,
     CANONICAL_FEATURES_28,
     CATEGORICAL_COLS,
     GROUP_COL,
@@ -217,6 +218,21 @@ ENAHO_SURVEY_CATALOG: Dict[str, Dict[str, Any]] = {
             1: "No está afiliado a ningún sistema de pensiones",
         },
     },
+    "ubigeo": {
+        "prompt": "Distrito de residencia en Lima Metropolitana / Callao (UBIGEO 6 dígitos, usado solo para imputación espacial en hogares secundarios)",
+        "options": {
+            "150132": "San Juan de Lurigancho (150132)",
+            "070106": "Ventanilla - Callao (070106)",
+            "150108": "Chorrillos (150108)",
+            "150110": "Comas (150110)",
+            "150103": "Ate (150103)",
+            "150142": "Villa El Salvador (150142)",
+            "150140": "Santiago de Surco (150140)",
+            "150122": "Miraflores (150122)",
+            "070101": "Callao Cercado (070101)",
+            "__nuevo_distrito__": "Otro distrito / No especificado (usa mediana global)",
+        },
+    },
 }
 
 
@@ -224,6 +240,7 @@ ENAHO_SURVEY_CATALOG: Dict[str, Dict[str, Any]] = {
 PRESET_HOUSEHOLDS: Dict[str, Dict[str, Any]] = {
     "vulnerable_hacinado": {
         "descripcion": "Hogar numeroso de Lima periférica, piso cemento/tierra, hacinado y empleo informal sin pensión",
+        "ubigeo": "150132",        # San Juan de Lurigancho
         "es_hogar_secundario": False,
         "tipo_vivienda": 6,        # Vivienda improvisada
         "material_pared": 8,       # Triplay/calamina/estera
@@ -252,7 +269,8 @@ PRESET_HOUSEHOLDS: Dict[str, Dict[str, Any]] = {
         "jefe_sin_pension": 1,     # Sin pensión
     },
     "secundario_sin_m01": {
-        "descripcion": "Hogar secundario (joven pareja con hijo en vivienda familiar compartida, sin ficha M01)",
+        "descripcion": "Hogar secundario (joven pareja con hijo en vivienda familiar compartida en Chorrillos, sin ficha M01)",
+        "ubigeo": "150108",        # Chorrillos (activa cascada distrital: mediana 4.0 hab / 3.0 dorm)
         "es_hogar_secundario": True,
         "tenencia_vivienda": 6,    # Cedida por otro hogar
         "fuente_agua": 1,
@@ -277,6 +295,7 @@ PRESET_HOUSEHOLDS: Dict[str, Dict[str, Any]] = {
     },
     "formal_estable": {
         "descripcion": "Hogar nuclear en departamento con empleo formal, educación superior e internet",
+        "ubigeo": "150140",        # Santiago de Surco
         "es_hogar_secundario": False,
         "tipo_vivienda": 2,        # Departamento
         "material_pared": 1,       # Ladrillo
@@ -338,7 +357,7 @@ def load_deduplicated_pooled_dataset(
 
 
 def build_production_gbdt_pipeline() -> Any:
-    """HistGBDT regularizado (100% compatible entre Python 3.14 y .venv) usado como explicador."""
+    """HistGBDT regularizado (100% compatible en Python 3.12 LTS y scikit-learn) usado como explicador."""
     hgb = HistGradientBoostingClassifier(
         max_iter=120,
         learning_rate=0.03,
@@ -424,7 +443,8 @@ def train_and_export_deployment_bundle(
     audita la brecha Train vs. OOF para descartar overfitting y exporta el paquete `.joblib`.
     """
     df_u = load_deduplicated_pooled_dataset(years=years, data_root=data_root, verbose=verbose)
-    X = df_u[CANONICAL_FEATURES_28 + [GROUP_COL]].copy()
+    cols_in = [c for c in CANONICAL_FEATURES_28 + [GROUP_COL, AUX_GROUP_COL] if c in df_u.columns]
+    X = df_u[cols_in].copy()
     y_arr = df_u[TARGET_COL].values.astype(int)
     grp_arr = df_u[GROUP_COL].values
 
@@ -489,6 +509,7 @@ def train_and_export_deployment_bundle(
     cutoff_b20 = float(np.quantile(oof_stack, 1.0 - budget_coverage))
     bundle: Dict[str, Any] = {
         "winner_name": "Stacking_Ensemble",
+        "selection_rule_2024": "Repeated_Spatial_CV_30runs_2024 (Opción 1B: PR_AUC_Mediana + Rank_Medio_PR sobre 704 conglomerados de ENAHO 2024)",
         "explainer_name": "HistGBDT_Regularizado",
         "train_years": list(years),
         "n_unique_households": int(len(y_arr)),
@@ -597,6 +618,7 @@ def build_household_dataframe_from_answers(answers: Dict[str, Any]) -> pd.DataFr
 
     row = {
         "conglomerado": str(answers.get("conglomerado", "__nuevo_hogar__")),
+        "ubigeo": str(answers.get("ubigeo", "__nuevo_distrito__")),
         # Numéricas (14)
         "total_habitaciones": tot_hab,
         "total_dormitorios": tot_dorm,
@@ -784,10 +806,12 @@ def run_interactive_survey(bundle: Dict[str, Any]) -> Dict[str, Any]:
     como con celda de Jupyter), evalúa al hogar y muestra el reporte explicativo completo.
     """
     print("\n=== ENCUESTA SOCIOECONÓMICA DE HOGAR (ENAHO R^28 — LIMA METROPOLITANA Y CALLAO) ===")
+    ubigeo_raw = input("Código UBIGEO distrital de 6 dígitos (ej. 150132 SJL, 150108 Chorrillos, 070106 Ventanilla) [Enter=__nuevo_distrito__]: ").strip()
+    ubigeo_val = ubigeo_raw if (len(ubigeo_raw) == 6 and ubigeo_raw.isdigit()) else "__nuevo_distrito__"
     sec_raw = input("¿Es hogar secundario sin ficha física de vivienda (Módulo 01)? [s/N]: ").strip().lower()
     es_sec = sec_raw in {"s", "si", "sí", "y", "yes", "1"}
 
-    answers: Dict[str, Any] = {"es_hogar_secundario": es_sec}
+    answers: Dict[str, Any] = {"es_hogar_secundario": es_sec, "ubigeo": ubigeo_val}
     if not es_sec:
         answers["tipo_vivienda"] = _ask_choice("tipo_vivienda", default=1)
         answers["material_pared"] = _ask_choice("material_pared", default=1)

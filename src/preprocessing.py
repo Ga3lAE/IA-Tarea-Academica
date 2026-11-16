@@ -93,6 +93,7 @@ VIVIENDA_FEATURES_12: List[str] = VIVIENDA_FEATURES_11  # Alias de compatibilida
 TARGET_COL: str = "target_pobreza"
 TARGET_ALIAS: str = "y"
 GROUP_COL: str = "conglomerado"
+AUX_GROUP_COL: str = "ubigeo"  # Nivel distrital solo para imputación espacial en cascada (nunca feature)
 
 
 # =============================================================================
@@ -101,19 +102,28 @@ GROUP_COL: str = "conglomerado"
 
 class SecondaryHouseholdImputer(BaseEstimator, TransformerMixin):
     """
-    Transformador Scikit-Learn que resuelve la Observación OBS-P01 del Jurado:
+    Transformador Scikit-Learn que resuelve la Observación OBS-P01 sin fuga de datos:
     1. Imputa atributos numéricos de vivienda ('total_habitaciones', 'total_dormitorios')
-       utilizando la mediana del conglomerado censal (CONGLOME) calculada estrictamente
-       sobre el fold de entrenamiento, con respaldo incondicional en la mediana global de train.
+       en hogares secundarios mediante una cascada espacial jerárquica ajustada
+       estrictamente sobre el pliegue de entrenamiento (`X_train`):
+         Nivel 1: Mediana del conglomerado censal (`conglomerado` / CONGLOME).
+         Nivel 2: Mediana del distrito censal (`ubigeo`) si el conglomerado no fue visto en train
+                  (p. ej. pliegues de validación en `GroupKFold(conglomerado)` o conglomerados nuevos).
+         Nivel 3: Mediana global de entrenamiento como respaldo incondicional.
+       Ni `conglomerado` ni `ubigeo` ingresan como variables predictoras al modelo
+       (son descartados automáticamente por `ColumnTransformer(remainder='drop')`).
     2. Recalcula de forma consistente 'personas_por_hab' tras la imputación física.
     3. Resuelve nulos estructurales de empleo asignando 0.0 horas semanales trabajadas
        cuando el jefe de hogar no trabaja (jefe_ocupado == 0).
     """
 
-    def __init__(self, group_col: str = GROUP_COL):
+    def __init__(self, group_col: str = GROUP_COL, aux_group_col: str = AUX_GROUP_COL):
         self.group_col = group_col
+        self.aux_group_col = aux_group_col
         self.cong_hab_median_: dict = {}
         self.cong_dor_median_: dict = {}
+        self.ubigeo_hab_median_: dict = {}
+        self.ubigeo_dor_median_: dict = {}
         self.global_hab_median_: float = 3.0
         self.global_dor_median_: float = 2.0
 
@@ -132,6 +142,19 @@ class SecondaryHouseholdImputer(BaseEstimator, TransformerMixin):
                 .dropna()
                 .to_dict()
             )
+        if self.aux_group_col in df.columns:
+            self.ubigeo_hab_median_ = (
+                df.groupby(self.aux_group_col)["total_habitaciones"]
+                .median()
+                .dropna()
+                .to_dict()
+            )
+            self.ubigeo_dor_median_ = (
+                df.groupby(self.aux_group_col)["total_dormitorios"]
+                .median()
+                .dropna()
+                .to_dict()
+            )
         if "total_habitaciones" in df.columns:
             self.global_hab_median_ = float(df["total_habitaciones"].median())
         if "total_dormitorios" in df.columns:
@@ -141,13 +164,20 @@ class SecondaryHouseholdImputer(BaseEstimator, TransformerMixin):
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         df = X.copy() if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
 
-        # 1. Imputación por conglomerado censal en vivienda con fallback global de train
-        if self.group_col in df.columns:
-            hab_imp = df[self.group_col].map(self.cong_hab_median_).fillna(self.global_hab_median_)
-            dor_imp = df[self.group_col].map(self.cong_dor_median_).fillna(self.global_dor_median_)
-        else:
-            hab_imp = self.global_hab_median_
-            dor_imp = self.global_dor_median_
+        # 1. Imputación espacial jerárquica: conglomerado -> ubigeo (distrito) -> global de train
+        hab_imp = pd.Series(np.nan, index=df.index, dtype=float)
+        dor_imp = pd.Series(np.nan, index=df.index, dtype=float)
+
+        if self.group_col in df.columns and self.cong_hab_median_:
+            hab_imp = df[self.group_col].map(self.cong_hab_median_)
+            dor_imp = df[self.group_col].map(self.cong_dor_median_)
+
+        if self.aux_group_col in df.columns and getattr(self, "ubigeo_hab_median_", None):
+            hab_imp = hab_imp.fillna(df[self.aux_group_col].map(self.ubigeo_hab_median_))
+            dor_imp = dor_imp.fillna(df[self.aux_group_col].map(self.ubigeo_dor_median_))
+
+        hab_imp = hab_imp.fillna(self.global_hab_median_)
+        dor_imp = dor_imp.fillna(self.global_dor_median_)
 
         if "total_habitaciones" in df.columns:
             df["total_habitaciones"] = df["total_habitaciones"].fillna(hab_imp)
@@ -293,6 +323,7 @@ def prepare_xy_data(
     features: Optional[List[str]] = None,
     target_col: str = TARGET_COL,
     group_col: str = GROUP_COL,
+    aux_group_col: str = AUX_GROUP_COL,
 ) -> Tuple[pd.DataFrame, pd.Series, pd.Series]:
     """
     Extrae (X, y, groups) desde un DataFrame consolidado del Big DF.
@@ -302,11 +333,14 @@ def prepare_xy_data(
     df : pd.DataFrame
         DataFrame consolidado (2024 o 2025).
     features : list[str] | None
-        Variables a incluir en X (por defecto CANONICAL_FEATURES_28 + [group_col] para el limpiador).
+        Variables a incluir en X (por defecto CANONICAL_FEATURES_28 + [group_col, aux_group_col]
+        para que SecondaryHouseholdImputer opere en cascada sin usarlos como features del modelo).
     target_col : str, default='target_pobreza'
         Nombre de la variable objetivo binaria.
     group_col : str, default='conglomerado'
         Nombre de la variable de agrupación espacial para GroupKFold.
+    aux_group_col : str, default='ubigeo'
+        Columna distrital de respaldo para imputación espacial en cascada (descartada por ColumnTransformer).
 
     Retorna
     -------
@@ -317,8 +351,8 @@ def prepare_xy_data(
     if features is None:
         features = CANONICAL_FEATURES_28
 
-    # Garantizar que group_col esté presente en X para que SecondaryHouseholdImputer opere
-    cols_to_extract = list(dict.fromkeys(features + [group_col]))
+    # Garantizar que group_col y aux_group_col estén presentes en X para que SecondaryHouseholdImputer opere
+    cols_to_extract = list(dict.fromkeys(features + [group_col, aux_group_col]))
     cols_present = [c for c in cols_to_extract if c in df.columns]
 
     X = df[cols_present].copy()
